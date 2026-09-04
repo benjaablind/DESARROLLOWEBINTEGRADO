@@ -1,0 +1,260 @@
+:host {
+  display: block;
+}
+
+/* --------------------------- Conmutador de vista ------------------------- */
+
+.conmutador {
+  display: inline-flex;
+  border: 1px solid var(--c-borde-fuerte);
+  border-radius: var(--r-md);
+  overflow: hidden;
+
+  .btn {
+    border-radius: 0;
+    border: 0;
+    background: var(--c-superficie);
+  }
+
+  .btn.activo {
+    background: var(--c-primario);
+    color: var(--c-primario-contraste);
+  }
+}
+
+/* ------------------------------ Barra del dia ---------------------------- */
+
+.barra-dia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-2);
+  margin-bottom: var(--e-4);
+}
+
+.entrada-dia {
+  width: auto;
+  min-width: 150px;
+}
+
+.dia-largo {
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--c-texto-medio);
+}
+
+.titulo-seccion {
+  margin: var(--e-5) 0 var(--e-3);
+}
+
+/* ---------------------------- Linea de tiempo ---------------------------- */
+
+.agenda-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.agenda {
+  display: grid;
+  grid-template-columns: 56px minmax(320px, 1fr);
+  min-width: 380px;
+}
+
+.horas .franja,
+.horas .franja-cierre {
+  position: relative;
+  height: 72px;
+  border: 0;
+}
+
+.horas .franja-cierre {
+  height: 0;
+}
+
+.horas span {
+  position: absolute;
+  top: -0.6em;
+  right: var(--e-2);
+  font-size: 0.76rem;
+  color: var(--c-texto-suave);
+}
+
+.lienzo {
+  position: relative;
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-md);
+  background: var(--c-superficie);
+  overflow: hidden;
+}
+
+.lienzo .franja {
+  border-top: 1px dashed var(--c-borde);
+}
+
+.lienzo .franja:first-of-type {
+  border-top: 0;
+}
+
+.eventos {
+  position: absolute;
+  inset: 0;
+}
+
+.bloque {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--c-borde);
+  border-left: 4px solid var(--c-texto-suave);
+  border-radius: var(--r-sm);
+  background: var(--c-superficie-2);
+  color: var(--c-texto);
+  font: inherit;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.bloque:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.bloque .b-hora {
+  font-weight: 700;
+}
+
+.bloque .b-nombre,
+.bloque .b-detalle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bloque .b-detalle {
+  color: var(--c-texto-suave);
+}
+
+/* Color por estado, compartido con la leyenda */
+.bloque[data-estado='PENDIENTE'],
+.muestra[data-estado='PENDIENTE'] {
+  background: var(--c-advertencia-suave);
+  border-left-color: var(--c-advertencia);
+}
+.bloque[data-estado='CONFIRMADA'],
+.muestra[data-estado='CONFIRMADA'] {
+  background: var(--c-info-suave);
+  border-left-color: var(--c-info);
+}
+.bloque[data-estado='ATENDIDA'],
+.muestra[data-estado='ATENDIDA'] {
+  background: var(--c-exito-suave);
+  border-left-color: var(--c-exito);
+}
+.bloque[data-estado='CANCELADA'],
+.muestra[data-estado='CANCELADA'],
+.bloque[data-estado='NO_ASISTIO'],
+.muestra[data-estado='NO_ASISTIO'] {
+  background: var(--c-peligro-suave);
+  border-left-color: var(--c-peligro);
+}
+.bloque[data-estado='CANCELADA'] .b-nombre {
+  text-decoration: line-through;
+}
+.bloque[data-estado='REPROGRAMADA'],
+.muestra[data-estado='REPROGRAMADA'] {
+  background: var(--c-superficie-3);
+  border-left-color: var(--c-borde-fuerte);
+}
+
+/* -------------------------------- Leyenda -------------------------------- */
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-2) var(--e-4);
+  margin-top: var(--e-4);
+  font-size: 0.8rem;
+  color: var(--c-texto-medio);
+}
+
+.leyenda-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e-2);
+}
+
+.muestra {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--c-borde);
+  border-left-width: 4px;
+  border-radius: var(--r-sm);
+  background: var(--c-superficie-2);
+}
+
+/* ------------------------------- Acciones -------------------------------- */
+
+.acciones-cita {
+  justify-content: flex-end;
+  gap: var(--e-1);
+  flex-wrap: nowrap;
+}
+
+/* -------------------------------- Modales -------------------------------- */
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--e-5) var(--e-3);
+  background: rgba(10, 25, 28, 0.55);
+  overflow-y: auto;
+}
+
+.modal {
+  width: 100%;
+  max-width: 640px;
+  padding: var(--e-5);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-lg);
+  background: var(--c-superficie);
+  box-shadow: var(--s-4);
+}
+
+.modal-sm {
+  max-width: 460px;
+}
+
+.modal .badge {
+  margin-right: var(--e-1);
+}
+
+/*
+  Cada cita tiene siete acciones. Con un ancho minimo se reparten en dos filas
+  en vez de apilarse una por linea o desbordar la tabla.
+*/
+.tabla .celda-acciones {
+  white-space: normal;
+  min-width: 22rem;
+}
+
+.tabla .celda-acciones .fila {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+/* En un bloque de 30 minutos no cabe la tercera linea. */
+.bloque-corto .b-detalle {
+  display: none;
+}

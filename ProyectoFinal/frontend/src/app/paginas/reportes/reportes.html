@@ -1,0 +1,760 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Reportes</h1>
+    <span class="subtitulo">Indicadores de la clínica por rango de fechas</span>
+  </div>
+</div>
+
+<!-- -------------------------------- Pestanas ---------------------------- -->
+<nav class="pestanas" role="tablist" aria-label="Tipos de reporte">
+  @for (p of pestanas; track p.clave) {
+    <button
+      type="button"
+      role="tab"
+      class="pestana"
+      [class.pestana-activa]="pestana() === p.clave"
+      [attr.aria-selected]="pestana() === p.clave"
+      (click)="irA(p.clave)"
+    >
+      {{ p.etiqueta }}
+    </button>
+  }
+</nav>
+
+<!-- ----------------------------- Rango de fechas ------------------------ -->
+@if (usaRango) {
+  <div class="card card-compacta">
+    <form class="filtros" [formGroup]="rango" (ngSubmit)="cargar()" novalidate>
+      <div class="form-campo">
+        <label class="form-etiqueta" for="rp-desde">Desde</label>
+        <input id="rp-desde" type="date" formControlName="desde" (change)="marcarRangoManual()" />
+      </div>
+      <div class="form-campo">
+        <label class="form-etiqueta" for="rp-hasta">Hasta</label>
+        <input id="rp-hasta" type="date" formControlName="hasta" (change)="marcarRangoManual()" />
+      </div>
+
+      <button type="submit" class="btn btn-primario">Aplicar</button>
+
+      <div class="atajos">
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primario]="atajoActivo() === 'mes'"
+          [class.btn-secundario]="atajoActivo() !== 'mes'"
+          (click)="aplicarAtajo('mes')"
+        >
+          Este mes
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primario]="atajoActivo() === 'trimestre'"
+          [class.btn-secundario]="atajoActivo() !== 'trimestre'"
+          (click)="aplicarAtajo('trimestre')"
+        >
+          Últimos 3 meses
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primario]="atajoActivo() === 'anio'"
+          [class.btn-secundario]="atajoActivo() !== 'anio'"
+          (click)="aplicarAtajo('anio')"
+        >
+          Este año
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primario]="atajoActivo() === 'todo'"
+          [class.btn-secundario]="atajoActivo() !== 'todo'"
+          (click)="aplicarAtajo('todo')"
+        >
+          Todo
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ------------------------ Selector para el historial ------------------ -->
+@if (pestana() === 'historial') {
+  <div class="card card-compacta">
+    <div class="filtros">
+      <div class="form-campo campo-paciente">
+        <label class="form-etiqueta" for="rp-paciente">Paciente</label>
+        <select
+          id="rp-paciente"
+          [value]="pacienteHistorial() ?? ''"
+          (change)="elegirPacienteHistorial($any($event.target).value)"
+        >
+          <option value="">Seleccione un paciente</option>
+          @for (p of pacientes(); track p.id) {
+            <option [value]="p.id">{{ p.nombreCompleto }} — {{ p.dni }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- -------------------------------- Contenido --------------------------- -->
+@if (cargando()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande" aria-hidden="true"></span>
+      <span class="cargando">Generando el reporte…</span>
+    </div>
+  </div>
+} @else if (error(); as mensaje) {
+  <div class="card">
+    <div class="alerta alerta-error" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+    <button type="button" class="btn btn-secundario" (click)="cargar()">Reintentar</button>
+  </div>
+} @else {
+  @switch (pestana()) {
+    <!-- ============================ Pacientes ======================== -->
+    @case ('pacientes') {
+      @if (repPacientes(); as r) {
+        <div class="grid metricas">
+          <div class="card-metrica">
+            <span class="valor">{{ r.total }}</span>
+            <span class="etiqueta">Pacientes registrados</span>
+          </div>
+          <div class="card-metrica metrica-exito">
+            <span class="valor">{{ r.activos }}</span>
+            <span class="etiqueta">Activos</span>
+          </div>
+          <div class="card-metrica metrica-neutra">
+            <span class="valor">{{ r.inactivos }}</span>
+            <span class="etiqueta">Inactivos</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-encabezado">
+            <h2>Detalle de pacientes</h2>
+            <div class="fila">
+              <span class="texto-pequeno texto-suave">
+                {{ fecha(r.desde) }} — {{ fecha(r.hasta) }}
+              </span>
+              <button type="button" class="btn btn-secundario btn-sm" (click)="exportarPacientes()">
+                Exportar a CSV
+              </button>
+            </div>
+          </div>
+
+          @if (r.pacientes.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin resultados</strong>
+              <p class="texto-suave">No hay pacientes registrados en el rango elegido.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th>DNI</th>
+                    <th class="celda-libre">Nombre completo</th>
+                    <th>Edad</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th>Fecha de registro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of r.pacientes; track p.id) {
+                    <tr>
+                      <td class="mono">{{ p.dni }}</td>
+                      <td class="celda-libre">{{ p.nombreCompleto }}</td>
+                      <td>{{ p.edad ?? '—' }}</td>
+                      <td>{{ p.telefono || '—' }}</td>
+                      <td>
+                        <span
+                          class="badge"
+                          [class]="p.estado === 'ACTIVO' ? 'badge-exito' : 'badge-neutro'"
+                          >{{ etiquetaPaciente(p.estado) }}</span
+                        >
+                      </td>
+                      <td>{{ fecha(p.fechaRegistro) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ============================== Citas ========================== -->
+    @case ('citas') {
+      @if (repCitas(); as r) {
+        @let filasEstado = filasCitasPorEstado();
+
+        <div class="grid metricas">
+          <div class="card-metrica">
+            <span class="valor">{{ r.total }}</span>
+            <span class="etiqueta">Citas del período</span>
+          </div>
+        </div>
+
+        <div class="card seccion">
+          <div class="card-encabezado">
+            <h2>Citas por estado</h2>
+            <span class="texto-pequeno texto-suave">
+              {{ fecha(r.desde) }} — {{ fecha(r.hasta) }}
+            </span>
+          </div>
+
+          @if (totalFilas(filasEstado) === 0) {
+            <div class="estado-vacio">
+              <strong>Sin citas</strong>
+              <p class="texto-suave">No se registraron citas en el rango elegido.</p>
+            </div>
+          } @else {
+            <div class="grafico">
+              @for (fila of filasEstado; track fila.etiqueta) {
+                <div class="grafico-fila">
+                  <span class="grafico-etiqueta">{{ fila.etiqueta }}</span>
+                  <div class="grafico-pista">
+                    <div
+                      class="grafico-barra"
+                      [style.width.%]="anchoBarra(fila, filasEstado)"
+                    ></div>
+                  </div>
+                  <span class="grafico-valor">{{ fila.valor }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="card">
+          <div class="card-encabezado">
+            <h2>Detalle de citas</h2>
+            <button type="button" class="btn btn-secundario btn-sm" (click)="exportarCitas()">
+              Exportar a CSV
+            </button>
+          </div>
+
+          @if (r.citas.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin resultados</strong>
+              <p class="texto-suave">No hay citas que mostrar en este rango.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th>Fecha y hora</th>
+                    <th class="celda-libre">Paciente</th>
+                    <th class="celda-libre">Odontólogo</th>
+                    <th class="celda-libre">Motivo</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of r.citas; track c.id) {
+                    <tr>
+                      <td>{{ fechaHora(c.fechaHora) }}</td>
+                      <td class="celda-libre">{{ c.pacienteNombre }}</td>
+                      <td class="celda-libre">{{ c.odontologoNombre }}</td>
+                      <td class="celda-libre">{{ c.motivo || '—' }}</td>
+                      <td>
+                        <span class="badge" [class]="badgesEstadoCita[c.estado]">{{
+                          etiquetasEstadoCita[c.estado]
+                        }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- =========================== Tratamientos ====================== -->
+    @case ('tratamientos') {
+      @if (repTratamientos(); as r) {
+        <div class="grid metricas">
+          <div class="card-metrica metrica-exito">
+            <span class="valor">{{ r.totalRealizados }}</span>
+            <span class="etiqueta">Tratamientos realizados</span>
+          </div>
+          <div class="card-metrica metrica-exito">
+            <span class="valor">{{ soles(r.montoRealizados) }}</span>
+            <span class="etiqueta">Monto realizado</span>
+          </div>
+          <div class="card-metrica metrica-advertencia">
+            <span class="valor">{{ r.totalPendientes }}</span>
+            <span class="etiqueta">Tratamientos pendientes</span>
+          </div>
+          <div class="card-metrica metrica-advertencia">
+            <span class="valor">{{ soles(r.montoPendientes) }}</span>
+            <span class="etiqueta">Monto pendiente</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-encabezado">
+            <h2>Detalle de tratamientos</h2>
+            <div class="fila">
+              <span class="texto-pequeno texto-suave">
+                {{ fecha(r.desde) }} — {{ fecha(r.hasta) }}
+              </span>
+              <button
+                type="button"
+                class="btn btn-secundario btn-sm"
+                (click)="exportarTratamientos()"
+              >
+                Exportar a CSV
+              </button>
+            </div>
+          </div>
+
+          @if (r.tratamientos.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin resultados</strong>
+              <p class="texto-suave">No hay tratamientos registrados en el rango elegido.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th class="celda-libre">Paciente</th>
+                    <th class="celda-libre">Tratamiento</th>
+                    <th>Estado</th>
+                    <th class="texto-derecha">Precio</th>
+                    <th class="texto-derecha">Pagado</th>
+                    <th class="texto-derecha">Saldo</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of r.tratamientos; track t.id) {
+                    <tr>
+                      <td class="celda-libre">{{ t.pacienteNombre }}</td>
+                      <td class="celda-libre">{{ t.nombre }}</td>
+                      <td>
+                        <span class="badge" [class]="badgesEstadoTratamiento[t.estado]">{{
+                          etiquetaTratamiento(t.estado)
+                        }}</span>
+                      </td>
+                      <td class="texto-derecha">{{ soles(t.precio) }}</td>
+                      <td class="texto-derecha texto-exito">{{ soles(t.totalPagado) }}</td>
+                      <td class="texto-derecha" [class.texto-peligro]="t.saldoPendiente > 0">
+                        {{ soles(t.saldoPendiente) }}
+                      </td>
+                      <td>{{ fecha(t.fechaInicio) }}</td>
+                      <td>{{ fecha(t.fechaFin) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ============================= Ingresos ======================== -->
+    @case ('ingresos') {
+      @if (repIngresos(); as r) {
+        @let filasMetodo = filasPorMetodo();
+        @let filasMes = filasPorMes();
+
+        <div class="grid metricas">
+          <div class="card-metrica metrica-exito">
+            <span class="valor">{{ soles(r.totalIngresos) }}</span>
+            <span class="etiqueta">Total de ingresos</span>
+          </div>
+          <div class="card-metrica">
+            <span class="valor">{{ r.cantidadPagos }}</span>
+            <span class="etiqueta">Pagos registrados</span>
+          </div>
+        </div>
+
+        <div class="fila fila-acciones">
+          <span class="texto-pequeno texto-suave">
+            Período: {{ fecha(r.desde) }} — {{ fecha(r.hasta) }}
+          </span>
+          <div class="espaciador"></div>
+          <button type="button" class="btn btn-secundario btn-sm" (click)="exportarIngresos()">
+            Exportar a CSV
+          </button>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-encabezado"><h2>Ingresos por método de pago</h2></div>
+            @if (filasMetodo.length === 0) {
+              <div class="estado-vacio">
+                <strong>Sin datos</strong>
+                <p class="texto-suave">No hay pagos registrados en el rango elegido.</p>
+              </div>
+            } @else {
+              <div class="grafico">
+                @for (fila of filasMetodo; track fila.etiqueta) {
+                  <div class="grafico-fila">
+                    <span class="grafico-etiqueta">{{ fila.etiqueta }}</span>
+                    <div class="grafico-pista">
+                      <div
+                        class="grafico-barra"
+                        [style.width.%]="anchoBarra(fila, filasMetodo)"
+                      ></div>
+                    </div>
+                    <span class="grafico-valor">{{ soles(fila.valor) }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="card">
+            <div class="card-encabezado"><h2>Ingresos por mes</h2></div>
+            @if (filasMes.length === 0) {
+              <div class="estado-vacio">
+                <strong>Sin datos</strong>
+                <p class="texto-suave">No hay ingresos acumulados por mes en este rango.</p>
+              </div>
+            } @else {
+              <div class="grafico">
+                @for (fila of filasMes; track fila.etiqueta) {
+                  <div class="grafico-fila">
+                    <span class="grafico-etiqueta">{{ fila.etiqueta }}</span>
+                    <div class="grafico-pista">
+                      <div
+                        class="grafico-barra grafico-barra-acento"
+                        [style.width.%]="anchoBarra(fila, filasMes)"
+                      ></div>
+                    </div>
+                    <span class="grafico-valor">{{ soles(fila.valor) }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    <!-- ========================== Pagos pendientes ==================== -->
+    @case ('pendientes') {
+      @if (repPendientes(); as r) {
+        <div class="grid metricas">
+          <div class="card-metrica metrica-peligro">
+            <span class="valor">{{ soles(r.totalPendiente) }}</span>
+            <span class="etiqueta">Total adeudado</span>
+          </div>
+          <div class="card-metrica">
+            <span class="valor">{{ r.cantidadTratamientos }}</span>
+            <span class="etiqueta">Tratamientos con saldo</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-encabezado">
+            <h2>Detalle de saldos pendientes</h2>
+            <button type="button" class="btn btn-secundario btn-sm" (click)="exportarPendientes()">
+              Exportar a CSV
+            </button>
+          </div>
+
+          @if (r.items.length === 0) {
+            <div class="estado-vacio">
+              <strong>Todo cobrado</strong>
+              <p class="texto-suave">No hay tratamientos con saldo pendiente.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th class="celda-libre">Paciente</th>
+                    <th class="celda-libre">Tratamiento</th>
+                    <th>Estado</th>
+                    <th class="texto-derecha">Precio</th>
+                    <th class="texto-derecha">Pagado</th>
+                    <th class="texto-derecha">Saldo</th>
+                    <th>Inicio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of r.items; track t.id) {
+                    <tr>
+                      <td class="celda-libre">{{ t.pacienteNombre }}</td>
+                      <td class="celda-libre">{{ t.nombre }}</td>
+                      <td>
+                        <span class="badge" [class]="badgesEstadoTratamiento[t.estado]">{{
+                          etiquetaTratamiento(t.estado)
+                        }}</span>
+                      </td>
+                      <td class="texto-derecha">{{ soles(t.precio) }}</td>
+                      <td class="texto-derecha texto-exito">{{ soles(t.totalPagado) }}</td>
+                      <td class="texto-derecha texto-peligro negrita">
+                        {{ soles(t.saldoPendiente) }}
+                      </td>
+                      <td>{{ fecha(t.fechaInicio) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    <!-- ======================= Historial del paciente ================= -->
+    @case ('historial') {
+      @if (!pacienteHistorial()) {
+        <div class="card">
+          <div class="estado-vacio">
+            <strong>Seleccione un paciente</strong>
+            <p class="texto-suave">
+              Elija un paciente para consultar su historial completo en la clínica.
+            </p>
+          </div>
+        </div>
+      } @else if (repHistorial(); as r) {
+        <div class="card card-compacta ficha-paciente">
+          <h2>{{ r.paciente.nombreCompleto }}</h2>
+          <p class="texto-pequeno texto-suave">
+            DNI {{ r.paciente.dni }} ·
+            {{ r.paciente.edad !== null ? r.paciente.edad + ' años' : 'Edad no registrada' }} ·
+            {{ r.paciente.telefono || 'Sin teléfono' }} ·
+            {{ etiquetaPaciente(r.paciente.estado) }}
+          </p>
+        </div>
+
+        <div class="grid metricas">
+          <div class="card-metrica">
+            <span class="valor">{{ r.totalConsultas }}</span>
+            <span class="etiqueta">Consultas</span>
+          </div>
+          <div class="card-metrica">
+            <span class="valor">{{ r.totalCitas }}</span>
+            <span class="etiqueta">Citas</span>
+          </div>
+          <div class="card-metrica">
+            <span class="valor">{{ r.totalTratamientos }}</span>
+            <span class="etiqueta">Tratamientos</span>
+          </div>
+          <div class="card-metrica">
+            <span class="valor">{{ r.totalArchivos }}</span>
+            <span class="etiqueta">Archivos</span>
+          </div>
+          <div class="card-metrica metrica-exito">
+            <span class="valor">{{ soles(r.totalPagado) }}</span>
+            <span class="etiqueta">Total pagado</span>
+          </div>
+          <div class="card-metrica metrica-peligro">
+            <span class="valor">{{ soles(r.saldoPendiente) }}</span>
+            <span class="etiqueta">Saldo pendiente</span>
+          </div>
+        </div>
+
+        <!-- Consultas -->
+        <div class="card seccion">
+          <div class="card-encabezado">
+            <h2>Consultas</h2>
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              (click)="exportarHistorialConsultas()"
+            >
+              Exportar a CSV
+            </button>
+          </div>
+          @if (r.consultas.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin consultas</strong>
+              <p class="texto-suave">El paciente no tiene consultas registradas.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th class="celda-libre">Motivo de consulta</th>
+                    <th class="celda-libre">Diagnóstico</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of r.consultas; track c.id) {
+                    <tr>
+                      <td>{{ fecha(c.fecha) }}</td>
+                      <td class="celda-libre">{{ c.motivoConsulta || '—' }}</td>
+                      <td class="celda-libre">{{ c.diagnostico || '—' }}</td>
+                      <td>
+                        <span class="badge" [class]="c.anulada ? 'badge-peligro' : 'badge-exito'">{{
+                          c.anulada ? 'Anulada' : 'Vigente'
+                        }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
+        <!-- Citas -->
+        <div class="card seccion">
+          <div class="card-encabezado">
+            <h2>Citas</h2>
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              (click)="exportarHistorialCitas()"
+            >
+              Exportar a CSV
+            </button>
+          </div>
+          @if (r.citas.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin citas</strong>
+              <p class="texto-suave">El paciente no tiene citas registradas.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th>Fecha y hora</th>
+                    <th class="celda-libre">Odontólogo</th>
+                    <th class="celda-libre">Motivo</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of r.citas; track c.id) {
+                    <tr>
+                      <td>{{ fechaHora(c.fechaHora) }}</td>
+                      <td class="celda-libre">{{ c.odontologoNombre }}</td>
+                      <td class="celda-libre">{{ c.motivo || '—' }}</td>
+                      <td>
+                        <span class="badge" [class]="badgesEstadoCita[c.estado]">{{
+                          etiquetasEstadoCita[c.estado]
+                        }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
+        <!-- Tratamientos -->
+        <div class="card seccion">
+          <div class="card-encabezado">
+            <h2>Tratamientos</h2>
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              (click)="exportarHistorialTratamientos()"
+            >
+              Exportar a CSV
+            </button>
+          </div>
+          @if (r.tratamientos.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin tratamientos</strong>
+              <p class="texto-suave">El paciente no tiene tratamientos registrados.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th class="celda-libre">Tratamiento</th>
+                    <th>Estado</th>
+                    <th class="texto-derecha">Precio</th>
+                    <th class="texto-derecha">Pagado</th>
+                    <th class="texto-derecha">Saldo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of r.tratamientos; track t.id) {
+                    <tr>
+                      <td class="celda-libre">{{ t.nombre }}</td>
+                      <td>
+                        <span class="badge" [class]="badgesEstadoTratamiento[t.estado]">{{
+                          etiquetaTratamiento(t.estado)
+                        }}</span>
+                      </td>
+                      <td class="texto-derecha">{{ soles(t.precio) }}</td>
+                      <td class="texto-derecha texto-exito">{{ soles(t.totalPagado) }}</td>
+                      <td class="texto-derecha" [class.texto-peligro]="t.saldoPendiente > 0">
+                        {{ soles(t.saldoPendiente) }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
+        <!-- Archivos -->
+        <div class="card seccion">
+          <div class="card-encabezado">
+            <h2>Archivos</h2>
+            <button
+              type="button"
+              class="btn btn-secundario btn-sm"
+              (click)="exportarHistorialArchivos()"
+            >
+              Exportar a CSV
+            </button>
+          </div>
+          @if (r.archivos.length === 0) {
+            <div class="estado-vacio">
+              <strong>Sin archivos</strong>
+              <p class="texto-suave">El paciente no tiene archivos adjuntos.</p>
+            </div>
+          } @else {
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th class="celda-libre">Nombre</th>
+                    <th>Tipo</th>
+                    <th>Tamaño</th>
+                    <th class="celda-libre">Descripción</th>
+                    <th>Subido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (a of r.archivos; track a.id) {
+                    <tr>
+                      <td class="celda-libre">{{ a.nombreOriginal }}</td>
+                      <td>
+                        <span class="badge badge-info">{{ etiquetaArchivo(a.tipo) }}</span>
+                      </td>
+                      <td class="mono">{{ a.tamanoLegible }}</td>
+                      <td class="celda-libre">{{ a.descripcion || '—' }}</td>
+                      <td>{{ fechaHora(a.fechaSubida) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      }
+    }
+  }
+}
