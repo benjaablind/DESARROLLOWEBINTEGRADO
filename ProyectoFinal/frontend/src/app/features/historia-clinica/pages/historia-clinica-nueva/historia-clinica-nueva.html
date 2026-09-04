@@ -1,0 +1,68 @@
+<div class="page-header">
+  <h2>Nueva consulta</h2>
+</div>
+
+<form class="form" [formGroup]="form" (ngSubmit)="guardar()">
+  <div class="form__field">
+    <label for="pacienteNombre">Paciente</label>
+    <input id="pacienteNombre" class="input" formControlName="pacienteNombre" />
+    @if (form.controls.pacienteNombre.invalid && form.controls.pacienteNombre.touched) {
+      <span class="form__error">Este campo es obligatorio.</span>
+    }
+  </div>
+
+  <div class="form__field">
+    <label for="odontologo">Odontólogo</label>
+    <input id="odontologo" class="input" formControlName="odontologo" />
+  </div>
+
+  <div class="form__field">
+    <label for="fecha">Fecha</label>
+    <input id="fecha" class="input" type="date" formControlName="fecha" />
+  </div>
+
+  <div class="form__field">
+    <label for="motivoConsulta">Motivo de consulta</label>
+    <input id="motivoConsulta" class="input" formControlName="motivoConsulta" />
+  </div>
+
+  <div class="form__field form__full">
+    <label for="anamnesis">Anamnesis</label>
+    <textarea id="anamnesis" class="input" rows="2" formControlName="anamnesis"></textarea>
+  </div>
+
+  <div class="form__field form__full">
+    <label for="examenClinico">Examen clínico</label>
+    <textarea id="examenClinico" class="input" rows="2" formControlName="examenClinico"></textarea>
+  </div>
+
+  <div class="form__field">
+    <label for="diagnostico">Diagnóstico</label>
+    <input id="diagnostico" class="input" formControlName="diagnostico" />
+  </div>
+
+  <div class="form__field">
+    <label for="procedimiento">Procedimiento</label>
+    <input id="procedimiento" class="input" formControlName="procedimiento" />
+  </div>
+
+  <div class="form__field">
+    <label for="tratamiento">Tratamiento</label>
+    <input id="tratamiento" class="input" formControlName="tratamiento" />
+  </div>
+
+  <div class="form__field">
+    <label for="medicamentos">Medicamentos</label>
+    <input id="medicamentos" class="input" formControlName="medicamentos" />
+  </div>
+
+  <div class="form__field form__full">
+    <label for="observaciones">Observaciones</label>
+    <textarea id="observaciones" class="input" rows="2" formControlName="observaciones"></textarea>
+  </div>
+
+  <div class="form__actions">
+    <button type="submit" class="btn btn--primary">Guardar consulta</button>
+    <a routerLink="/historia-clinica" class="btn btn--secondary">Cancelar</a>
+  </div>
+</form>

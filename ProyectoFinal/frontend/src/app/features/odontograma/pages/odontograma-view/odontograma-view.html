@@ -1,0 +1,99 @@
+<div class="page-header">
+  <h2>Odontograma</h2>
+</div>
+
+<div class="odonto">
+  <div class="odonto__chart">
+    <div class="odonto__row">
+      @for (numero of arcadaSuperior; track numero) {
+        <button
+          type="button"
+          class="odonto__tooth"
+          [class.odonto__tooth--selected]="piezaSeleccionada() === numero"
+          [style.background]="colorDe(estadoDe(numero))"
+          (click)="seleccionar(numero)"
+        >
+          {{ numero }}
+        </button>
+      }
+    </div>
+    <div class="odonto__row">
+      @for (numero of arcadaInferior; track numero) {
+        <button
+          type="button"
+          class="odonto__tooth"
+          [class.odonto__tooth--selected]="piezaSeleccionada() === numero"
+          [style.background]="colorDe(estadoDe(numero))"
+          (click)="seleccionar(numero)"
+        >
+          {{ numero }}
+        </button>
+      }
+    </div>
+
+    <div class="odonto__leyenda">
+      @for (estado of estados; track estado) {
+        <span class="odonto__leyenda-item">
+          <span class="odonto__leyenda-color" [style.background]="colorDe(estado)"></span>
+          {{ estado }}
+        </span>
+      }
+    </div>
+  </div>
+
+  <div class="odonto__panel">
+    @if (pieza(); as p) {
+      <h3>Pieza {{ p.numero }}</h3>
+
+      <div class="form__field">
+        <label for="estado">Estado</label>
+        <select id="estado" class="input" [(ngModel)]="estadoForm">
+          @for (estado of estados; track estado) {
+            <option [value]="estado">{{ estado }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form__field">
+        <label for="diagnostico">Diagnóstico</label>
+        <input id="diagnostico" class="input" [(ngModel)]="diagnosticoForm" />
+      </div>
+
+      <div class="form__field">
+        <label for="tratamiento">Tratamiento</label>
+        <input id="tratamiento" class="input" [(ngModel)]="tratamientoForm" />
+      </div>
+
+      <div class="form__field">
+        <label for="observaciones">Observaciones</label>
+        <textarea id="observaciones" class="input" rows="2" [(ngModel)]="observacionesForm"></textarea>
+      </div>
+
+      <button type="button" class="btn btn--primary" (click)="guardar()">Guardar registro</button>
+
+      <h4 class="odonto__historial-titulo">Historial</h4>
+      @if (p.historial.length === 0) {
+        <p>Sin registros previos.</p>
+      } @else {
+        <ul class="odonto__historial">
+          @for (registro of p.historial; track registro.fecha + registro.estado) {
+            <li>
+              <strong>{{ registro.fecha }}</strong> — {{ registro.estado }}
+              @if (registro.diagnostico) {
+                <div>Diagnóstico: {{ registro.diagnostico }}</div>
+              }
+              @if (registro.tratamiento) {
+                <div>Tratamiento: {{ registro.tratamiento }}</div>
+              }
+              @if (registro.observaciones) {
+                <div>Obs.: {{ registro.observaciones }}</div>
+              }
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      <p>Selecciona una pieza dental para ver o registrar información.</p>
+    }
+  </div>
+</div>

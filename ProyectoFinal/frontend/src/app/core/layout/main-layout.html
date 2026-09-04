@@ -1,0 +1,27 @@
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar__brand">🦷 Clínica Dental</div>
+    <nav class="sidebar__nav">
+      @for (item of navItems; track item.path) {
+        <a
+          class="sidebar__link"
+          [routerLink]="item.path"
+          routerLinkActive="sidebar__link--active"
+        >
+          <span class="sidebar__icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <div class="layout__main">
+    <header class="topbar">
+      <h1 class="topbar__title">Sistema de Gestión Odontológica</h1>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

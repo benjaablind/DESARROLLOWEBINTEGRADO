@@ -1,0 +1,51 @@
+@if (registro(); as r) {
+  <div class="page-header">
+    <h2>Consulta de {{ r.pacienteNombre }}</h2>
+    <a routerLink="/historia-clinica" class="btn btn--secondary">← Volver</a>
+  </div>
+
+  <dl class="detail">
+    <div>
+      <dt>Odontólogo</dt>
+      <dd>{{ r.odontologo }}</dd>
+    </div>
+    <div>
+      <dt>Fecha</dt>
+      <dd>{{ r.fecha }}</dd>
+    </div>
+    <div class="detail__full">
+      <dt>Motivo de consulta</dt>
+      <dd>{{ r.motivoConsulta }}</dd>
+    </div>
+    <div class="detail__full">
+      <dt>Anamnesis</dt>
+      <dd>{{ r.anamnesis || '—' }}</dd>
+    </div>
+    <div class="detail__full">
+      <dt>Examen clínico</dt>
+      <dd>{{ r.examenClinico || '—' }}</dd>
+    </div>
+    <div>
+      <dt>Diagnóstico</dt>
+      <dd>{{ r.diagnostico }}</dd>
+    </div>
+    <div>
+      <dt>Tratamiento</dt>
+      <dd>{{ r.tratamiento || '—' }}</dd>
+    </div>
+    <div>
+      <dt>Procedimiento</dt>
+      <dd>{{ r.procedimiento || '—' }}</dd>
+    </div>
+    <div>
+      <dt>Medicamentos</dt>
+      <dd>{{ r.medicamentos || '—' }}</dd>
+    </div>
+    <div class="detail__full">
+      <dt>Observaciones</dt>
+      <dd>{{ r.observaciones || '—' }}</dd>
+    </div>
+  </dl>
+} @else {
+  <p>No se encontró la consulta solicitada.</p>
+}
