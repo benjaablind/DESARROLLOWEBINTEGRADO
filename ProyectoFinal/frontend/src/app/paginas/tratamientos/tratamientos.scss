@@ -1,0 +1,179 @@
+/* Estilos propios de la pantalla de tratamientos. */
+
+:host {
+  display: block;
+}
+
+.filtro-check {
+  padding-bottom: 0.55rem;
+}
+
+.lista-tratamientos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+  margin-top: var(--e-4);
+}
+
+/* ------------------------------- Tarjeta -------------------------------- */
+
+.tarjeta {
+  padding: var(--e-4);
+  transition: box-shadow 0.15s ease;
+}
+
+.tarjeta-abierta {
+  box-shadow: var(--s-2);
+  border-color: var(--c-primario-200);
+}
+
+.tarjeta-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e-3);
+  margin-bottom: var(--e-3);
+}
+
+.tarjeta-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  flex: 1 1 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tarjeta-titulos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tarjeta-nombre {
+  font-size: 1rem;
+  color: var(--c-primario-700);
+}
+
+.flecha {
+  display: inline-block;
+  color: var(--c-texto-suave);
+  transition: transform 0.15s ease;
+}
+
+.flecha-abierta {
+  transform: rotate(90deg);
+}
+
+/* ------------------------------- Importes ------------------------------- */
+
+.tarjeta-importes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--e-3);
+  margin-bottom: var(--e-2);
+}
+
+.etiqueta-mini {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--c-texto-suave);
+}
+
+.texto-exito {
+  color: var(--c-exito);
+}
+
+.texto-peligro {
+  color: var(--c-peligro);
+}
+
+/* --------------------------- Barra de progreso -------------------------- */
+
+.barra {
+  height: 8px;
+  width: 100%;
+  border-radius: var(--r-full);
+  background: var(--c-superficie-3);
+  overflow: hidden;
+  margin-bottom: var(--e-1);
+}
+
+.barra-relleno {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--c-primario);
+  transition: width 0.25s ease;
+}
+
+/* -------------------------------- Detalle ------------------------------- */
+
+.tarjeta-detalle {
+  margin-top: var(--e-4);
+  padding-top: var(--e-4);
+  border-top: 1px solid var(--c-borde);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+}
+
+.tarjeta-detalle .descripcion {
+  margin: 0;
+  color: var(--c-texto-medio);
+}
+
+.acciones-tratamiento {
+  align-items: flex-end;
+  gap: var(--e-2);
+}
+
+.campo-estado {
+  margin-bottom: 0;
+  min-width: 200px;
+  flex: 0 1 240px;
+}
+
+.form-sesion {
+  background: var(--c-superficie-2);
+  margin: 0;
+}
+
+.form-sesion h3 {
+  margin-bottom: var(--e-3);
+}
+
+.titulo-sesiones {
+  margin: 0;
+}
+
+/* ------------------------------- Dialogos ------------------------------- */
+
+.capa {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--e-5) var(--e-4);
+  overflow-y: auto;
+  background: rgba(9, 24, 28, 0.55);
+}
+
+.dialogo {
+  width: min(720px, 100%);
+  margin: auto;
+  box-shadow: var(--s-4);
+}
+
+.dialogo-corto {
+  width: min(460px, 100%);
+}
