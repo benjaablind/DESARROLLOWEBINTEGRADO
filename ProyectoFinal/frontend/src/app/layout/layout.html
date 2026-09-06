@@ -1,0 +1,78 @@
+<div class="cascaron" [class.barra-abierta]="barraAbierta()">
+  <!-- Capa oscura que solo aparece con la barra desplegada en moviles -->
+  <div class="velo" (click)="cerrarBarra()" aria-hidden="true"></div>
+
+  <aside class="barra-lateral" id="menu-lateral">
+    <div class="marca">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <path
+          d="M12 3c-2 0-2.5 1-4.5 1S4 3.6 4 6c0 3 1 4.5 1.6 7.5.5 2.4.6 5.5 2.4 5.5 1.7 0 1.4-4 4-4s2.3 4 4 4c1.8 0 1.9-3.1 2.4-5.5C19 10.5 20 9 20 6c0-2.4-1.5-2-3.5-2S14 3 12 3z"
+        />
+      </svg>
+      <span class="marca-texto">
+        <strong>Clinica Dental</strong>
+        <small>Gestion Odontologica</small>
+      </span>
+    </div>
+
+    <nav class="navegacion" aria-label="Modulos del sistema">
+      @for (item of menu(); track item.ruta) {
+        <a
+          class="enlace"
+          [routerLink]="item.ruta"
+          routerLinkActive="activo"
+          (click)="cerrarBarra()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="item.icono" /></svg>
+          <span>{{ item.etiqueta }}</span>
+        </a>
+      } @empty {
+        <p class="sin-modulos">Su rol no tiene modulos asignados.</p>
+      }
+    </nav>
+
+    <div class="pie-barra">
+      <span class="texto-pequeno">Version 1.0</span>
+    </div>
+  </aside>
+
+  <div class="area-principal">
+    <header class="barra-superior">
+      <button
+        type="button"
+        class="btn btn-fantasma btn-icono boton-menu"
+        (click)="alternarBarra()"
+        [attr.aria-expanded]="barraAbierta()"
+        aria-controls="menu-lateral"
+        aria-label="Mostrar u ocultar el menu"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+      </button>
+
+      <h1 class="titulo-clinica">Sistema de Gestion Odontologica</h1>
+
+      <div class="espaciador"></div>
+
+      @if (usuario(); as u) {
+        <div class="usuario">
+          <span class="avatar" aria-hidden="true">{{ u.nombres.charAt(0) }}{{ u.apellidos.charAt(0) }}</span>
+          <span class="datos-usuario">
+            <strong>{{ u.nombreCompleto }}</strong>
+            <small>{{ u.rol }}</small>
+          </span>
+        </div>
+      }
+
+      <button type="button" class="btn btn-secundario btn-sm salir" (click)="cerrarSesion()">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-salir">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+        </svg>
+        <span class="etiqueta-salir">Cerrar sesion</span>
+      </button>
+    </header>
+
+    <main class="contenido">
+      <router-outlet />
+    </main>
+  </div>
+</div>
