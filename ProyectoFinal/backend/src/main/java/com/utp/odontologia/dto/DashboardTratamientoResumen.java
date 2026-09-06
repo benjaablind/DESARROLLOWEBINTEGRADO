@@ -18,7 +18,7 @@ public record DashboardTratamientoResumen(
         return new DashboardTratamientoResumen(
                 tratamiento.getId(),
                 tratamiento.getPacienteId(),
-                pacienteNombre == null ? CitaResponse.SIN_DATO : pacienteNombre,
+                pacienteNombre == null ? Textos.SIN_DATO : pacienteNombre,
                 tratamiento.getNombre(),
                 tratamiento.getEstado(),
                 tratamiento.getPrecio(),

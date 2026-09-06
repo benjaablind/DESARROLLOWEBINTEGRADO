@@ -13,6 +13,7 @@ import com.utp.odontologia.dto.DashboardPacienteResumen;
 import com.utp.odontologia.dto.DashboardResponse;
 import com.utp.odontologia.dto.DashboardResumenActividad;
 import com.utp.odontologia.dto.DashboardTratamientoResumen;
+import com.utp.odontologia.dto.Textos;
 import com.utp.odontologia.model.Cita;
 import com.utp.odontologia.model.EstadoCita;
 import com.utp.odontologia.model.Paciente;
@@ -172,14 +173,14 @@ public class DashboardService {
     private String nombreDePaciente(Long pacienteId) {
         return pacienteRepository.buscarPorId(pacienteId)
                 .map(p -> p.getNombreCompleto())
-                .orElse(CitaResponse.SIN_DATO);
+                .orElse(Textos.SIN_DATO);
     }
 
     private CitaResponse aRespuesta(Cita cita) {
         String paciente = nombreDePaciente(cita.getPacienteId());
         String odontologo = usuarioRepository.buscarPorId(cita.getOdontologoId())
                 .map(u -> u.getNombreCompleto())
-                .orElse(CitaResponse.SIN_DATO);
+                .orElse(Textos.SIN_DATO);
         return CitaResponse.desde(cita, paciente, odontologo);
     }
 

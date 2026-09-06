@@ -12,6 +12,7 @@ import com.utp.odontologia.dto.CitaEstadoRequest;
 import com.utp.odontologia.dto.CitaReprogramarRequest;
 import com.utp.odontologia.dto.CitaRequest;
 import com.utp.odontologia.dto.CitaResponse;
+import com.utp.odontologia.dto.Textos;
 import com.utp.odontologia.exception.RecursoNoEncontradoException;
 import com.utp.odontologia.exception.ReglaNegocioException;
 import com.utp.odontologia.model.Cita;
@@ -254,11 +255,11 @@ public class CitaService {
     private CitaResponse aRespuesta(Cita cita) {
         String paciente = pacienteRepository.buscarPorId(cita.getPacienteId())
                 .map(p -> p.getNombreCompleto())
-                .orElse(CitaResponse.SIN_DATO);
+                .orElse(Textos.SIN_DATO);
 
         String odontologo = usuarioRepository.buscarPorId(cita.getOdontologoId())
                 .map(u -> u.getNombreCompleto())
-                .orElse(CitaResponse.SIN_DATO);
+                .orElse(Textos.SIN_DATO);
 
         return CitaResponse.desde(cita, paciente, odontologo);
     }

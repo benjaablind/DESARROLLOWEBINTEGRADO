@@ -25,17 +25,14 @@ public record CitaResponse(
         Long citaOriginalId,
         LocalDateTime fechaRegistro) {
 
-    /** Texto que se usa cuando el paciente o el odontologo ya no existe. */
-    public static final String SIN_DATO = "(no disponible)";
-
     /** Convierte el modelo interno en la respuesta que ve el cliente. */
     public static CitaResponse desde(Cita cita, String pacienteNombre, String odontologoNombre) {
         return new CitaResponse(
                 cita.getId(),
                 cita.getPacienteId(),
-                pacienteNombre == null ? SIN_DATO : pacienteNombre,
+                pacienteNombre == null ? Textos.SIN_DATO : pacienteNombre,
                 cita.getOdontologoId(),
-                odontologoNombre == null ? SIN_DATO : odontologoNombre,
+                odontologoNombre == null ? Textos.SIN_DATO : odontologoNombre,
                 cita.getFechaHora(),
                 cita.getFechaHoraFin(),
                 cita.getDuracionMinutos(),

@@ -26,9 +26,9 @@ public record PagoResponse(
         return new PagoResponse(
                 pago.getId(),
                 pago.getTratamientoId(),
-                tratamientoNombre == null ? CitaResponse.SIN_DATO : tratamientoNombre,
+                tratamientoNombre == null ? Textos.SIN_DATO : tratamientoNombre,
                 pago.getPacienteId(),
-                pacienteNombre == null ? CitaResponse.SIN_DATO : pacienteNombre,
+                pacienteNombre == null ? Textos.SIN_DATO : pacienteNombre,
                 pago.getMonto(),
                 pago.getMetodo(),
                 pago.getFecha(),

@@ -38,9 +38,9 @@ public record TratamientoResponse(
         return new TratamientoResponse(
                 tratamiento.getId(),
                 tratamiento.getPacienteId(),
-                pacienteNombre == null ? CitaResponse.SIN_DATO : pacienteNombre,
+                pacienteNombre == null ? Textos.SIN_DATO : pacienteNombre,
                 tratamiento.getOdontologoId(),
-                odontologoNombre == null ? CitaResponse.SIN_DATO : odontologoNombre,
+                odontologoNombre == null ? Textos.SIN_DATO : odontologoNombre,
                 tratamiento.getNombre(),
                 tratamiento.getDescripcion(),
                 tratamiento.getPrecio(),
