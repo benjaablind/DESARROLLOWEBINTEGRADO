@@ -1,0 +1,610 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Citas</h1>
+    <span class="subtitulo">Agenda del dia y control de asistencia</span>
+  </div>
+
+  <div class="fila">
+    <div class="conmutador" role="group" aria-label="Cambiar de vista">
+      <button
+        type="button"
+        class="btn btn-sm"
+        [class.activo]="vista() === 'agenda'"
+        [attr.aria-pressed]="vista() === 'agenda'"
+        (click)="cambiarVista('agenda')"
+      >
+        Agenda del dia
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm"
+        [class.activo]="vista() === 'lista'"
+        [attr.aria-pressed]="vista() === 'lista'"
+        (click)="cambiarVista('lista')"
+      >
+        Lista
+      </button>
+    </div>
+
+    <button type="button" class="btn btn-primario" (click)="abrirNueva()">Nueva cita</button>
+  </div>
+</div>
+
+@if (error(); as mensaje) {
+  <div class="alerta alerta-error" role="alert">
+    <span>{{ mensaje }}</span>
+    <button type="button" class="btn btn-sm btn-secundario" (click)="cargarCitas()">
+      Reintentar
+    </button>
+  </div>
+}
+
+<!-- ============================ Vista de agenda ========================== -->
+@if (vista() === 'agenda') {
+  <div class="card">
+    <div class="barra-dia">
+      <button
+        type="button"
+        class="btn btn-secundario btn-sm"
+        (click)="desplazarDia(-1)"
+        aria-label="Dia anterior"
+      >
+        &lsaquo; Anterior
+      </button>
+      <button type="button" class="btn btn-secundario btn-sm" (click)="irAHoy()">Hoy</button>
+      <button
+        type="button"
+        class="btn btn-secundario btn-sm"
+        (click)="desplazarDia(1)"
+        aria-label="Dia siguiente"
+      >
+        Siguiente &rsaquo;
+      </button>
+
+      <input
+        type="date"
+        class="entrada-dia"
+        [value]="dia()"
+        (change)="cambiarDiaDesdeInput($event)"
+        aria-label="Dia de la agenda"
+      />
+
+      <span class="espaciador"></span>
+      <span class="dia-largo">{{ diaLegible() }}</span>
+    </div>
+
+    @if (cargando()) {
+      <div class="estado-vacio">
+        <span class="spinner spinner-grande"></span>
+        <p class="texto-suave">Cargando la agenda...</p>
+      </div>
+    } @else {
+      <div class="agenda-scroll">
+        <div class="agenda">
+          <div class="horas">
+            @for (hora of franjas(); track hora) {
+              <div class="franja"><span>{{ hora }}</span></div>
+            }
+            <div class="franja-cierre"><span>20:00</span></div>
+          </div>
+
+          <div class="lienzo" [style.height.px]="altoLienzo">
+            @for (hora of franjas(); track hora) {
+              <div class="franja" [style.height.px]="altoHora"></div>
+            }
+
+            <div class="eventos">
+              @for (bloque of bloques(); track bloque.cita.id) {
+                <button
+                  type="button"
+                  class="bloque"
+                  [attr.data-estado]="bloque.cita.estado"
+                  [style.top.px]="bloque.top"
+                  [style.height.px]="bloque.alto"
+                  [class.bloque-corto]="bloque.corto"
+                  [style.left.%]="bloque.izquierda"
+                  [style.width.%]="bloque.ancho"
+                  [title]="
+                    rangoHorario(bloque.cita) +
+                    ' - ' +
+                    bloque.cita.pacienteNombre +
+                    ' (' +
+                    etiquetaEstado(bloque.cita.estado) +
+                    ')'
+                  "
+                  (click)="abrirEdicion(bloque.cita)"
+                  [disabled]="!puedeEditar(bloque.cita)"
+                >
+                  <span class="b-hora">{{ rangoHorario(bloque.cita) }}</span>
+                  <span class="b-nombre">{{ bloque.cita.pacienteNombre }}</span>
+                  <span class="b-detalle">{{ bloque.cita.odontologoNombre }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      @if (bloques().length === 0 && fueraDeHorario().length === 0) {
+        <div class="estado-vacio">
+          <strong>Sin citas para este dia</strong>
+          <p class="texto-suave">No hay citas agendadas el {{ diaLegible() }}.</p>
+          <button type="button" class="btn btn-primario btn-sm" (click)="abrirNueva()">
+            Agendar una cita
+          </button>
+        </div>
+      }
+
+      @if (fueraDeHorario().length > 0) {
+        <div class="alerta alerta-advertencia">
+          <span>
+            Hay {{ fueraDeHorario().length }} cita(s) fuera del horario dibujado (08:00 a 20:00):
+            @for (cita of fueraDeHorario(); track cita.id) {
+              <strong>{{ rangoHorario(cita) }} {{ cita.pacienteNombre }}</strong
+              >@if (!$last) { <span>, </span> }
+            }
+          </span>
+        </div>
+      }
+
+      <!-- Leyenda de colores por estado -->
+      <div class="leyenda">
+        @for (estado of estadosCita; track estado) {
+          <span class="leyenda-item">
+            <span class="muestra" [attr.data-estado]="estado"></span>
+            {{ etiquetaEstado(estado) }}
+          </span>
+        }
+      </div>
+
+      <!-- Acciones rapidas sobre las citas del dia -->
+      @if (citasOrdenadas().length > 0) {
+        <h3 class="titulo-seccion">Citas del dia</h3>
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Hora</th>
+                <th>Paciente</th>
+                <th>Odontologo</th>
+                <th>Estado</th>
+                <th class="celda-acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cita of citasOrdenadas(); track cita.id) {
+                <tr>
+                  <td class="mono">{{ rangoHorario(cita) }}</td>
+                  <td>{{ cita.pacienteNombre }}</td>
+                  <td>{{ cita.odontologoNombre }}</td>
+                  <td>
+                    <span [class]="'badge ' + badgeEstado(cita.estado)">
+                      {{ etiquetaEstado(cita.estado) }}
+                    </span>
+                  </td>
+                  <td class="celda-acciones">
+                    <ng-container [ngTemplateOutlet]="acciones" [ngTemplateOutletContext]="{ $implicit: cita }"></ng-container>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+}
+
+<!-- ============================= Vista de lista ========================== -->
+@if (vista() === 'lista') {
+  <div class="card">
+    <form class="filtros" [formGroup]="filtros" (ngSubmit)="cargarCitas()">
+      <div class="form-campo">
+        <label for="f-dia">Dia</label>
+        <input id="f-dia" type="date" formControlName="dia" (change)="cargarCitas()" />
+      </div>
+
+      <div class="form-campo">
+        <label for="f-paciente">Paciente</label>
+        <select id="f-paciente" formControlName="pacienteId" (change)="cargarCitas()">
+          <option value="">Todos</option>
+          @for (paciente of pacientes(); track paciente.id) {
+            <option [value]="paciente.id">{{ paciente.nombreCompleto }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-campo">
+        <label for="f-odontologo">Odontologo</label>
+        <select id="f-odontologo" formControlName="odontologoId" (change)="cargarCitas()">
+          <option value="">Todos</option>
+          @for (odontologo of odontologos(); track odontologo.id) {
+            <option [value]="odontologo.id">{{ odontologo.nombreCompleto }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-campo">
+        <label for="f-estado">Estado</label>
+        <select id="f-estado" formControlName="estado" (change)="cargarCitas()">
+          <option value="">Todos</option>
+          @for (estado of estadosCita; track estado) {
+            <option [value]="estado">{{ etiquetaEstado(estado) }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="fila">
+        <button type="submit" class="btn btn-primario btn-sm">Buscar</button>
+        <button type="button" class="btn btn-secundario btn-sm" (click)="limpiarFiltros()">
+          Limpiar
+        </button>
+      </div>
+    </form>
+
+    @if (cargando()) {
+      <div class="estado-vacio">
+        <span class="spinner spinner-grande"></span>
+        <p class="texto-suave">Cargando las citas...</p>
+      </div>
+    } @else {
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Paciente</th>
+              <th>Odontologo</th>
+              <th>Motivo</th>
+              <th>Duracion</th>
+              <th>Estado</th>
+              <th class="celda-acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cita of citasOrdenadas(); track cita.id) {
+              <tr>
+                <td class="mono">{{ fechaCorta(cita.fechaHora) }} {{ rangoHorario(cita) }}</td>
+                <td>{{ cita.pacienteNombre }}</td>
+                <td>{{ cita.odontologoNombre }}</td>
+                <td class="celda-libre">{{ cita.motivo || '-' }}</td>
+                <td>{{ cita.duracionMinutos }} min</td>
+                <td>
+                  <span [class]="'badge ' + badgeEstado(cita.estado)">
+                    {{ etiquetaEstado(cita.estado) }}
+                  </span>
+                </td>
+                <td class="celda-acciones">
+                  <ng-container [ngTemplateOutlet]="acciones" [ngTemplateOutletContext]="{ $implicit: cita }"></ng-container>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="tabla-vacia">
+                  No se encontraron citas con los filtros aplicados.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<!-- ====================== Plantilla de acciones por cita ================== -->
+<ng-template #acciones let-cita>
+  <div class="fila acciones-cita">
+    @if (procesando() === cita.id) {
+      <span class="spinner"></span>
+    }
+    <button
+      type="button"
+      class="btn btn-sm btn-secundario"
+      (click)="confirmar(cita)"
+      [disabled]="!puedeConfirmar(cita) || procesando() === cita.id"
+      title="Confirmar la cita (solo si esta pendiente)"
+    >
+      Confirmar
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-secundario"
+      (click)="registrarAsistencia(cita, true)"
+      [disabled]="!puedeRegistrarAsistencia(cita) || procesando() === cita.id"
+      title="Registrar que el paciente asistio"
+    >
+      Asistio
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-secundario"
+      (click)="registrarAsistencia(cita, false)"
+      [disabled]="!puedeRegistrarAsistencia(cita) || procesando() === cita.id"
+      title="Registrar que el paciente no asistio"
+    >
+      No asistio
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-secundario"
+      (click)="abrirReprogramar(cita)"
+      [disabled]="!puedeReprogramar(cita) || procesando() === cita.id"
+    >
+      Reprogramar
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-secundario"
+      (click)="abrirEdicion(cita)"
+      [disabled]="!puedeEditar(cita) || procesando() === cita.id"
+    >
+      Editar
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-secundario"
+      (click)="abrirCancelar(cita)"
+      [disabled]="!puedeCancelar(cita) || procesando() === cita.id"
+    >
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-peligro"
+      (click)="abrirEliminar(cita)"
+      [disabled]="procesando() === cita.id"
+    >
+      Eliminar
+    </button>
+  </div>
+</ng-template>
+
+<!-- ========================== Formulario de cita ========================= -->
+@if (formAbierto()) {
+  <div class="modal-fondo" role="dialog" aria-modal="true" aria-labelledby="titulo-form-cita">
+    <div class="modal">
+      <h2 id="titulo-form-cita">{{ tituloFormulario() }}</h2>
+
+      @if (errorFormulario(); as mensaje) {
+        <div class="alerta alerta-error" role="alert">{{ mensaje }}</div>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="c-paciente">Paciente <span class="requerido">*</span></label>
+            <select id="c-paciente" formControlName="pacienteId">
+              <option value="">Seleccione un paciente</option>
+              @for (paciente of pacientes(); track paciente.id) {
+                <option [value]="paciente.id">
+                  {{ paciente.nombreCompleto }} - {{ paciente.dni }}
+                </option>
+              }
+            </select>
+            @if (formulario.controls.pacienteId.touched && formulario.controls.pacienteId.invalid) {
+              <span class="form-error">Elija un paciente.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="c-odontologo">Odontologo <span class="requerido">*</span></label>
+            <select
+              id="c-odontologo"
+              formControlName="odontologoId"
+              (change)="consultarDisponibilidad()"
+            >
+              <option value="">Seleccione un odontologo</option>
+              @for (odontologo of odontologos(); track odontologo.id) {
+                <option [value]="odontologo.id">{{ odontologo.nombreCompleto }}</option>
+              }
+            </select>
+            @if (
+              formulario.controls.odontologoId.touched && formulario.controls.odontologoId.invalid
+            ) {
+              <span class="form-error">Elija un odontologo.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="c-fecha">Fecha <span class="requerido">*</span></label>
+            <input
+              id="c-fecha"
+              type="date"
+              formControlName="fecha"
+              (change)="consultarDisponibilidad()"
+            />
+            @if (formulario.controls.fecha.touched && formulario.controls.fecha.invalid) {
+              <span class="form-error">Indique la fecha.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="c-hora">Hora <span class="requerido">*</span></label>
+            <input id="c-hora" type="time" formControlName="hora" />
+            @if (formulario.controls.hora.touched && formulario.controls.hora.invalid) {
+              <span class="form-error">Indique la hora.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="c-duracion">Duracion en minutos <span class="requerido">*</span></label>
+            <input id="c-duracion" type="number" min="10" max="240" step="5" formControlName="duracionMinutos" />
+            <span class="form-ayuda">Entre 10 y 240 minutos. Por defecto 30.</span>
+            @if (formulario.controls.duracionMinutos.touched && formulario.controls.duracionMinutos.invalid) {
+              <span class="form-error">La duracion debe estar entre 10 y 240 minutos.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="c-motivo">Motivo</label>
+            <input id="c-motivo" type="text" formControlName="motivo" placeholder="Ej. Control" />
+          </div>
+        </div>
+
+        @if (
+          formulario.hasError('fechaPasada') &&
+          (formulario.controls.fecha.touched || formulario.controls.hora.touched)
+        ) {
+          <div class="alerta alerta-advertencia">
+            La fecha y hora de la cita debe ser futura.
+          </div>
+        }
+
+        <div class="form-campo">
+          <label for="c-observaciones">Observaciones</label>
+          <textarea id="c-observaciones" formControlName="observaciones"></textarea>
+        </div>
+
+        <!-- Aviso de horas ya ocupadas por el odontologo -->
+        @if (consultandoAgenda()) {
+          <p class="cargando"><span class="spinner"></span> Consultando la disponibilidad...</p>
+        } @else if (ocupadas().length > 0) {
+          <div class="alerta alerta-advertencia">
+            <span>
+              El odontologo ya tiene estas franjas ocupadas ese dia:
+              @for (hora of ocupadas(); track hora) {
+                <span class="badge badge-advertencia">{{ hora }}</span>
+              }
+              Elija una hora libre para no cruzar la agenda.
+            </span>
+          </div>
+        } @else if (
+          formulario.controls.odontologoId.value && formulario.controls.fecha.value
+        ) {
+          <div class="alerta alerta-info">
+            El odontologo no tiene citas registradas ese dia.
+          </div>
+        }
+
+        <div class="form-acciones">
+          <button
+            type="button"
+            class="btn btn-secundario"
+            (click)="cerrarFormulario()"
+            [disabled]="guardando()"
+          >
+            Cerrar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner"></span>
+              <span>Guardando...</span>
+            } @else {
+              <span>Guardar cita</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ========================= Panel de reprogramacion ===================== -->
+@if (citaAReprogramar(); as cita) {
+  <div class="modal-fondo" role="dialog" aria-modal="true" aria-labelledby="titulo-reprogramar">
+    <div class="modal modal-sm">
+      <h2 id="titulo-reprogramar">Reprogramar cita</h2>
+      <p class="texto-suave texto-pequeno">
+        {{ cita.pacienteNombre }} &middot; {{ fechaCorta(cita.fechaHora) }}
+        {{ rangoHorario(cita) }}
+      </p>
+
+      <form [formGroup]="formReprogramar" (ngSubmit)="confirmarReprogramar()" novalidate>
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="r-fecha">Nueva fecha <span class="requerido">*</span></label>
+            <input id="r-fecha" type="date" formControlName="fecha" />
+          </div>
+          <div class="form-campo">
+            <label for="r-hora">Nueva hora <span class="requerido">*</span></label>
+            <input id="r-hora" type="time" formControlName="hora" />
+          </div>
+        </div>
+
+        @if (
+          formReprogramar.hasError('fechaPasada') &&
+          (formReprogramar.controls.fecha.touched || formReprogramar.controls.hora.touched)
+        ) {
+          <div class="alerta alerta-advertencia">La nueva fecha y hora debe ser futura.</div>
+        }
+
+        <div class="form-campo">
+          <label for="r-motivo">Motivo de la reprogramacion</label>
+          <textarea id="r-motivo" formControlName="motivo"></textarea>
+        </div>
+
+        <div class="alerta alerta-info">
+          Al reprogramar se crea una cita nueva con la fecha indicada y la cita actual queda
+          marcada como reprogramada.
+        </div>
+
+        <div class="form-acciones">
+          <button type="button" class="btn btn-secundario" (click)="cerrarReprogramar()">
+            Cerrar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="procesando() === cita.id">
+            Reprogramar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ========================== Panel de cancelacion ======================= -->
+@if (citaACancelar(); as cita) {
+  <div class="modal-fondo" role="dialog" aria-modal="true" aria-labelledby="titulo-cancelar">
+    <div class="modal modal-sm">
+      <h2 id="titulo-cancelar">Cancelar cita</h2>
+      <p class="texto-suave texto-pequeno">
+        {{ cita.pacienteNombre }} &middot; {{ fechaCorta(cita.fechaHora) }}
+        {{ rangoHorario(cita) }}
+      </p>
+
+      <form [formGroup]="formCancelar" (ngSubmit)="confirmarCancelar()" novalidate>
+        <div class="form-campo">
+          <label for="x-motivo">Motivo de la cancelacion</label>
+          <textarea id="x-motivo" formControlName="motivo" placeholder="Opcional"></textarea>
+          <span class="form-ayuda">
+            Una cita cancelada ya no admite cambios de estado posteriores.
+          </span>
+        </div>
+
+        <div class="form-acciones">
+          <button type="button" class="btn btn-secundario" (click)="cerrarCancelar()">
+            Volver
+          </button>
+          <button type="submit" class="btn btn-peligro" [disabled]="procesando() === cita.id">
+            Cancelar la cita
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- =========================== Panel de borrado ========================== -->
+@if (citaAEliminar(); as cita) {
+  <div class="modal-fondo" role="dialog" aria-modal="true" aria-labelledby="titulo-eliminar">
+    <div class="modal modal-sm">
+      <h2 id="titulo-eliminar">Eliminar cita</h2>
+      <p>
+        Se eliminara de forma permanente la cita de <strong>{{ cita.pacienteNombre }}</strong> del
+        {{ fechaCorta(cita.fechaHora) }} a las {{ rangoHorario(cita) }}. Esta accion no se puede
+        deshacer.
+      </p>
+      <div class="form-acciones">
+        <button type="button" class="btn btn-secundario" (click)="cerrarEliminar()">Volver</button>
+        <button
+          type="button"
+          class="btn btn-peligro"
+          (click)="confirmarEliminar()"
+          [disabled]="procesando() === cita.id"
+        >
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+}
