@@ -1,0 +1,422 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Odontograma</h1>
+    <span class="subtitulo">Estado vigente e historial de cada pieza dental</span>
+  </div>
+
+  <div class="conmutador" role="group" aria-label="Tipo de denticion">
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.activo]="denticion() === 'PERMANENTE'"
+      [attr.aria-pressed]="denticion() === 'PERMANENTE'"
+      (click)="cambiarDenticion('PERMANENTE')"
+    >
+      Denticion permanente
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm"
+      [class.activo]="denticion() === 'DECIDUA'"
+      [attr.aria-pressed]="denticion() === 'DECIDUA'"
+      (click)="cambiarDenticion('DECIDUA')"
+    >
+      Denticion decidua
+    </button>
+  </div>
+</div>
+
+<!-- ========================= Seleccion del paciente ====================== -->
+<div class="card card-compacta">
+  <div class="filtros">
+    <div class="form-campo">
+      <label for="o-paciente">Paciente</label>
+      <select id="o-paciente" [value]="pacienteId()" (change)="cambiarPaciente($event)">
+        <option value="">Seleccione un paciente</option>
+        @for (paciente of pacientes(); track paciente.id) {
+          <!-- [selected] es necesario: las opciones llegan despues que el valor -->
+          <option [value]="paciente.id" [selected]="esPacienteElegido(paciente.id)">
+            {{ paciente.nombreCompleto }} - {{ paciente.dni }}
+          </option>
+        }
+      </select>
+    </div>
+
+    @if (odontograma(); as datos) {
+      <div class="fila">
+        <span class="badge badge-primario">{{ datos.totalRegistros }} registros historicos</span>
+        <span class="badge badge-neutro">{{ datos.piezas.length }} piezas con estado</span>
+      </div>
+    }
+  </div>
+
+  <div class="alerta alerta-info">
+    <span>
+      El odontograma <strong>nunca se sobrescribe</strong>: cada vez que registra el estado de una
+      pieza se agrega un asiento nuevo, el mapa muestra siempre el ultimo y los anteriores quedan
+      disponibles en el historial de la pieza.
+    </span>
+  </div>
+</div>
+
+@if (error(); as mensaje) {
+  <div class="alerta alerta-error" role="alert">
+    <span>{{ mensaje }}</span>
+    <button type="button" class="btn btn-sm btn-secundario" (click)="cargarOdontograma()">
+      Reintentar
+    </button>
+  </div>
+}
+
+@if (!pacienteId()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <strong>Elija un paciente</strong>
+      <p class="texto-suave">
+        Seleccione un paciente para ver su mapa dental y el historial de cada pieza.
+      </p>
+    </div>
+  </div>
+} @else if (cargando()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande"></span>
+      <p class="texto-suave">Cargando el odontograma...</p>
+    </div>
+  </div>
+} @else {
+  <div class="contenido" [class.con-panel]="piezaSeleccionada() !== null">
+    <!-- ============================ Mapa dental ========================== -->
+    <div class="card">
+      <div class="card-encabezado">
+        <h2>Mapa dental de {{ nombrePaciente() || 'el paciente' }}</h2>
+        <span class="texto-suave texto-pequeno">
+          Numeracion FDI &middot;
+          {{ denticion() === 'PERMANENTE' ? 'permanente' : 'decidua' }}
+        </span>
+      </div>
+
+      <div class="mapa-scroll">
+        <div class="mapa">
+          <div class="rotulos">
+            <span>Derecha del paciente</span>
+            <span>Izquierda del paciente</span>
+          </div>
+
+          <div class="arco">
+            <div class="cuadrante">
+              @for (numero of cuadrantes().supDerecho; track numero) {
+                <button
+                  type="button"
+                  class="pieza"
+                  [class.sin-registro]="!estadoDePieza(numero)"
+                  [class.activa]="piezaSeleccionada() === numero"
+                  [style.background]="colorDePieza(numero)"
+                  [style.color]="colorTextoPieza(numero)"
+                  [title]="tituloPieza(numero)"
+                  (click)="seleccionarPieza(numero)"
+                >
+                  {{ numero }}
+                </button>
+              }
+            </div>
+            <span class="eje-v" aria-hidden="true"></span>
+            <div class="cuadrante">
+              @for (numero of cuadrantes().supIzquierdo; track numero) {
+                <button
+                  type="button"
+                  class="pieza"
+                  [class.sin-registro]="!estadoDePieza(numero)"
+                  [class.activa]="piezaSeleccionada() === numero"
+                  [style.background]="colorDePieza(numero)"
+                  [style.color]="colorTextoPieza(numero)"
+                  [title]="tituloPieza(numero)"
+                  (click)="seleccionarPieza(numero)"
+                >
+                  {{ numero }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="eje-h" aria-hidden="true"></div>
+
+          <div class="arco">
+            <div class="cuadrante">
+              @for (numero of cuadrantes().infDerecho; track numero) {
+                <button
+                  type="button"
+                  class="pieza"
+                  [class.sin-registro]="!estadoDePieza(numero)"
+                  [class.activa]="piezaSeleccionada() === numero"
+                  [style.background]="colorDePieza(numero)"
+                  [style.color]="colorTextoPieza(numero)"
+                  [title]="tituloPieza(numero)"
+                  (click)="seleccionarPieza(numero)"
+                >
+                  {{ numero }}
+                </button>
+              }
+            </div>
+            <span class="eje-v" aria-hidden="true"></span>
+            <div class="cuadrante">
+              @for (numero of cuadrantes().infIzquierdo; track numero) {
+                <button
+                  type="button"
+                  class="pieza"
+                  [class.sin-registro]="!estadoDePieza(numero)"
+                  [class.activa]="piezaSeleccionada() === numero"
+                  [style.background]="colorDePieza(numero)"
+                  [style.color]="colorTextoPieza(numero)"
+                  [title]="tituloPieza(numero)"
+                  (click)="seleccionarPieza(numero)"
+                >
+                  {{ numero }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="form-ayuda ayuda-mapa">
+        Pulse una pieza para ver su historial y registrar un estado nuevo. Las piezas sin registro
+        se muestran en gris.
+      </p>
+
+      <!-- Leyenda de colores, siempre visible -->
+      <h3 class="titulo-seccion">Leyenda de estados</h3>
+      <div class="leyenda">
+        @for (estado of estadosPieza; track estado) {
+          <span class="leyenda-item">
+            <span class="muestra" [style.background]="colorEstado(estado)"></span>
+            {{ etiquetaEstado(estado) }}
+          </span>
+        }
+        <span class="leyenda-item">
+          <span class="muestra sin-registro"></span>
+          Sin registro
+        </span>
+      </div>
+
+      <!-- Resumen por estado -->
+      <h3 class="titulo-seccion">Resumen por estado</h3>
+      @if (filasResumen().length === 0) {
+        <div class="estado-vacio">
+          <strong>Sin registros</strong>
+          <p class="texto-suave">
+            Este paciente todavia no tiene piezas registradas en su odontograma.
+          </p>
+        </div>
+      } @else {
+        <div class="resumen">
+          @for (fila of filasResumen(); track fila.estado) {
+            <div class="resumen-item">
+              <span
+                class="resumen-color"
+                [style.background]="fila.color"
+                [style.color]="colorTextoEstado(fila.estado)"
+                >{{ fila.cantidad }}</span
+              >
+              <span class="texto-pequeno">{{ fila.etiqueta }}</span>
+            </div>
+          }
+          <div class="resumen-item">
+            <span class="resumen-color total">{{ totalResumen() }}</span>
+            <span class="texto-pequeno">Total de piezas</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- ========================= Panel de la pieza ======================= -->
+    @if (piezaSeleccionada(); as numero) {
+      <aside class="card panel" aria-label="Detalle de la pieza">
+        <div class="card-encabezado">
+          <h2>Pieza {{ numero }}</h2>
+          <button type="button" class="btn btn-fantasma btn-sm" (click)="cerrarPanel()">
+            Cerrar
+          </button>
+        </div>
+
+        <!-- Estado vigente -->
+        <h3 class="titulo-seccion">Estado actual</h3>
+        @if (piezaActual(); as pieza) {
+          <div class="estado-actual">
+            <span
+              class="etiqueta-estado"
+              [style.background]="colorEstado(pieza.estado)"
+              [style.color]="colorTextoEstado(pieza.estado)"
+            >
+              {{ etiquetaEstado(pieza.estado) }}
+            </span>
+            <span class="texto-pequeno texto-suave">
+              Registrado el {{ fechaCorta(pieza.fecha) }} {{ horaCorta(pieza.fecha) }}
+            </span>
+          </div>
+          <dl class="lista-datos">
+            <div>
+              <dt>Superficie</dt>
+              <dd>{{ pieza.superficie || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Diagnostico</dt>
+              <dd>{{ pieza.diagnostico || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Tratamiento</dt>
+              <dd>{{ pieza.tratamiento || '-' }}</dd>
+            </div>
+            <div>
+              <dt>Observaciones</dt>
+              <dd>{{ pieza.observaciones || '-' }}</dd>
+            </div>
+          </dl>
+        } @else {
+          <p class="texto-suave texto-pequeno">
+            La pieza {{ numero }} no tiene ningun estado registrado todavia.
+          </p>
+        }
+
+        <!-- Historial -->
+        <h3 class="titulo-seccion">Historial de la pieza</h3>
+        @if (cargandoHistorial()) {
+          <p class="cargando"><span class="spinner"></span> Cargando el historial...</p>
+        } @else if (errorHistorial(); as mensaje) {
+          <div class="alerta alerta-error" role="alert">
+            <span>{{ mensaje }}</span>
+            <button type="button" class="btn btn-sm btn-secundario" (click)="recargarHistorial()">
+              Reintentar
+            </button>
+          </div>
+        } @else {
+          <ol class="historial">
+            @for (registro of historial(); track registro.registroId; let primero = $first) {
+              <li class="registro" [class.vigente]="primero">
+                <div class="registro-cabecera">
+                  <span
+                    class="etiqueta-estado pequena"
+                    [style.background]="colorEstado(registro.estado)"
+                    [style.color]="colorTextoEstado(registro.estado)"
+                  >
+                    {{ etiquetaEstado(registro.estado) }}
+                  </span>
+                  @if (primero) {
+                    <span class="badge badge-primario">Vigente</span>
+                  }
+                  <span class="espaciador"></span>
+                  <span class="mono texto-pequeno">
+                    {{ fechaCorta(registro.fecha) }} {{ horaCorta(registro.fecha) }}
+                  </span>
+                </div>
+                <p class="texto-pequeno registro-detalle">
+                  @if (registro.superficie) {
+                    <span><strong>Superficie:</strong> {{ registro.superficie }}</span>
+                  }
+                  @if (registro.diagnostico) {
+                    <span><strong>Diagnostico:</strong> {{ registro.diagnostico }}</span>
+                  }
+                  @if (registro.tratamiento) {
+                    <span><strong>Tratamiento:</strong> {{ registro.tratamiento }}</span>
+                  }
+                  @if (registro.observaciones) {
+                    <span><strong>Observaciones:</strong> {{ registro.observaciones }}</span>
+                  }
+                </p>
+              </li>
+            } @empty {
+              <li class="texto-suave texto-pequeno sin-historial">
+                Esta pieza no tiene registros anteriores.
+              </li>
+            }
+          </ol>
+        }
+
+        <!-- Registrar un estado nuevo -->
+        <h3 class="titulo-seccion">Registrar un estado nuevo</h3>
+        @if (errorFormulario(); as mensaje) {
+          <div class="alerta alerta-error" role="alert">{{ mensaje }}</div>
+        }
+
+        <form [formGroup]="formulario" (ngSubmit)="registrar()" novalidate>
+          <div class="form-campo">
+            <label for="p-odontologo">Odontologo <span class="requerido">*</span></label>
+            <select id="p-odontologo" formControlName="odontologoId">
+              <option value="">Seleccione un odontologo</option>
+              @for (odontologo of odontologos(); track odontologo.id) {
+                <option [value]="odontologo.id">{{ odontologo.nombreCompleto }}</option>
+              }
+            </select>
+            @if (
+              formulario.controls.odontologoId.touched && formulario.controls.odontologoId.invalid
+            ) {
+              <span class="form-error">Elija un odontologo.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="p-estado">Estado <span class="requerido">*</span></label>
+            <select id="p-estado" formControlName="estado">
+              <option value="">Seleccione un estado</option>
+              @for (estado of estadosPieza; track estado) {
+                <option [value]="estado">{{ etiquetaEstado(estado) }}</option>
+              }
+            </select>
+            @if (formulario.controls.estado.touched && formulario.controls.estado.invalid) {
+              <span class="form-error">Elija el estado de la pieza.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="p-superficie">Superficie</label>
+            <input
+              id="p-superficie"
+              type="text"
+              formControlName="superficie"
+              placeholder="Ej. Oclusal, mesial, distal"
+            />
+          </div>
+
+          <div class="form-campo">
+            <label for="p-diagnostico">Diagnostico</label>
+            <textarea id="p-diagnostico" formControlName="diagnostico"></textarea>
+          </div>
+
+          <div class="form-campo">
+            <label for="p-tratamiento">Tratamiento</label>
+            <textarea id="p-tratamiento" formControlName="tratamiento"></textarea>
+          </div>
+
+          <div class="form-campo">
+            <label for="p-observaciones">Observaciones</label>
+            <textarea id="p-observaciones" formControlName="observaciones"></textarea>
+          </div>
+
+          <p class="form-ayuda">
+            Se guarda un registro nuevo: el estado anterior de la pieza no se modifica y queda en
+            el historial.
+          </p>
+
+          <div class="form-acciones">
+            <button
+              type="button"
+              class="btn btn-secundario"
+              (click)="cerrarPanel()"
+              [disabled]="guardando()"
+            >
+              Cerrar
+            </button>
+            <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+              @if (guardando()) {
+                <span class="spinner"></span>
+                <span>Guardando...</span>
+              } @else {
+                <span>Registrar estado</span>
+              }
+            </button>
+          </div>
+        </form>
+      </aside>
+    }
+  </div>
+}
