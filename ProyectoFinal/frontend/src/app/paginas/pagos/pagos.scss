@@ -1,0 +1,82 @@
+/* Estilos propios de la pantalla de pagos. */
+
+:host {
+  display: block;
+}
+
+.campo-paciente {
+  flex: 1 1 320px;
+}
+
+.metricas {
+  margin: var(--e-4) 0;
+}
+
+.metrica-exito {
+  border-left-color: var(--c-exito);
+}
+
+.metrica-exito .valor {
+  color: var(--c-exito);
+}
+
+.metrica-peligro {
+  border-left-color: var(--c-peligro);
+}
+
+.metrica-peligro .valor {
+  color: var(--c-peligro);
+}
+
+.seccion {
+  margin-bottom: var(--e-4);
+}
+
+.texto-exito {
+  color: var(--c-exito);
+}
+
+.texto-peligro {
+  color: var(--c-peligro);
+}
+
+/* --------------------------- Barra de progreso -------------------------- */
+
+.barra {
+  height: 8px;
+  min-width: 90px;
+  border-radius: var(--r-full);
+  background: var(--c-superficie-3);
+  overflow: hidden;
+}
+
+.barra-relleno {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--c-primario);
+  transition: width 0.25s ease;
+}
+
+/* ------------------------------- Dialogos ------------------------------- */
+
+.capa {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--e-5) var(--e-4);
+  overflow-y: auto;
+  background: rgba(9, 24, 28, 0.55);
+}
+
+.dialogo {
+  width: min(680px, 100%);
+  margin: auto;
+  box-shadow: var(--s-4);
+}
+
+.dialogo-corto {
+  width: min(460px, 100%);
+}

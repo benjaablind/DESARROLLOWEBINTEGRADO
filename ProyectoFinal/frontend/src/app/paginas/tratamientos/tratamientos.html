@@ -1,0 +1,517 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Tratamientos</h1>
+    <span class="subtitulo">Planes de tratamiento, sesiones y avance del pago</span>
+  </div>
+  <button type="button" class="btn btn-primario" (click)="abrirCrear()">Nuevo tratamiento</button>
+</div>
+
+<!-- ------------------------------- Filtros ------------------------------ -->
+<div class="card card-compacta">
+  <div class="filtros">
+    <div class="form-campo">
+      <label class="form-etiqueta" for="filtro-paciente">Paciente</label>
+      <select
+        id="filtro-paciente"
+        [value]="filtroPaciente() ?? ''"
+        (change)="cambiarFiltroPaciente($any($event.target).value)"
+      >
+        <option value="">Todos los pacientes</option>
+        @for (p of pacientes(); track p.id) {
+          <option [value]="p.id">{{ p.nombreCompleto }} — {{ p.dni }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="form-campo">
+      <label class="form-etiqueta" for="filtro-estado">Estado</label>
+      <select
+        id="filtro-estado"
+        [value]="filtroEstado()"
+        (change)="cambiarFiltroEstado($any($event.target).value)"
+      >
+        <option value="">Todos los estados</option>
+        @for (e of estados; track e) {
+          <option [value]="e">{{ etiquetasEstado[e] }}</option>
+        }
+      </select>
+    </div>
+
+    <label class="form-check filtro-check">
+      <input
+        type="checkbox"
+        [checked]="soloActivos()"
+        (change)="cambiarSoloActivos($any($event.target).checked)"
+      />
+      <span>Solo activos</span>
+    </label>
+
+    <button type="button" class="btn btn-secundario" (click)="limpiarFiltros()">Limpiar</button>
+  </div>
+</div>
+
+@if (aviso(); as mensaje) {
+  <div class="alerta alerta-error" role="alert">
+    <span>{{ mensaje }}</span>
+    <button type="button" class="btn btn-sm btn-fantasma" (click)="cerrarAviso()">Cerrar</button>
+  </div>
+}
+
+<!-- ------------------------------- Listado ------------------------------ -->
+@if (cargando()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande" aria-hidden="true"></span>
+      <span class="cargando">Cargando tratamientos…</span>
+    </div>
+  </div>
+} @else if (error(); as mensaje) {
+  <div class="card">
+    <div class="alerta alerta-error" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+    <button type="button" class="btn btn-secundario" (click)="cargar()">Reintentar</button>
+  </div>
+} @else {
+  <div class="lista-tratamientos">
+    @for (t of visibles(); track t.id) {
+      <article class="card tarjeta" [class.tarjeta-abierta]="expandido() === t.id">
+        <!-- Resumen -->
+        <header class="tarjeta-cabecera">
+          <button
+            type="button"
+            class="tarjeta-toggle"
+            [attr.aria-expanded]="expandido() === t.id"
+            (click)="alternar(t.id)"
+          >
+            <span class="flecha" [class.flecha-abierta]="expandido() === t.id" aria-hidden="true"
+              >▸</span
+            >
+            <span class="tarjeta-titulos">
+              <strong class="tarjeta-nombre">{{ t.nombre }}</strong>
+              <span class="texto-pequeno texto-suave">{{ t.pacienteNombre }}</span>
+            </span>
+          </button>
+          <span class="badge" [class]="badgesEstado[t.estado]">{{
+            etiquetasEstado[t.estado]
+          }}</span>
+        </header>
+
+        <div class="tarjeta-importes">
+          <div>
+            <span class="etiqueta-mini">Precio</span>
+            <strong>{{ soles(t.precio) }}</strong>
+          </div>
+          <div>
+            <span class="etiqueta-mini">Pagado</span>
+            <strong class="texto-exito">{{ soles(t.totalPagado) }}</strong>
+          </div>
+          <div>
+            <span class="etiqueta-mini">Saldo</span>
+            <strong [class.texto-peligro]="t.saldoPendiente > 0">{{
+              soles(t.saldoPendiente)
+            }}</strong>
+          </div>
+        </div>
+
+        <div class="barra" role="presentation">
+          <div class="barra-relleno" [style.width.%]="porcentajePagado(t)"></div>
+        </div>
+        <span class="texto-pequeno texto-suave">
+          {{ porcentajePagado(t) }}% pagado · {{ sesionesRealizadas(t) }} de
+          {{ t.sesiones.length }} sesiones realizadas
+        </span>
+
+        <!-- Detalle -->
+        @if (expandido() === t.id) {
+          <div class="tarjeta-detalle">
+            <dl class="lista-datos">
+              <div>
+                <dt>Odontólogo</dt>
+                <dd>{{ t.odontologoNombre }}</dd>
+              </div>
+              <div>
+                <dt>Fecha de inicio</dt>
+                <dd>{{ fecha(t.fechaInicio) }}</dd>
+              </div>
+              <div>
+                <dt>Fecha de fin</dt>
+                <dd>{{ fecha(t.fechaFin) }}</dd>
+              </div>
+              <div>
+                <dt>Registrado</dt>
+                <dd>{{ fecha(t.fechaRegistro) }}</dd>
+              </div>
+            </dl>
+
+            <p class="descripcion">
+              <span class="etiqueta-mini">Descripción</span>
+              {{ t.descripcion || 'Sin descripción registrada.' }}
+            </p>
+            <p class="descripcion">
+              <span class="etiqueta-mini">Observaciones</span>
+              {{ t.observaciones || 'Sin observaciones.' }}
+            </p>
+
+            <!-- Acciones -->
+            <div class="fila acciones-tratamiento">
+              <div class="form-campo campo-estado">
+                <label class="form-etiqueta" [attr.for]="'estado-' + t.id">Cambiar estado</label>
+                <select
+                  [attr.id]="'estado-' + t.id"
+                  [value]="t.estado"
+                  [disabled]="esFinal(t.estado)"
+                  (change)="cambiarEstado(t, $event)"
+                >
+                  @for (e of estados; track e) {
+                    <option [value]="e">{{ etiquetasEstado[e] }}</option>
+                  }
+                </select>
+                @if (esFinal(t.estado)) {
+                  <span class="form-ayuda"
+                    >Un tratamiento en estado «{{ etiquetasEstado[t.estado] }}» ya no admite
+                    cambios.</span
+                  >
+                }
+              </div>
+
+              <div class="espaciador"></div>
+
+              <button
+                type="button"
+                class="btn btn-secundario btn-sm"
+                [disabled]="esFinal(t.estado)"
+                (click)="abrirEditar(t)"
+              >
+                Editar
+              </button>
+              <button
+                type="button"
+                class="btn btn-secundario btn-sm"
+                [disabled]="esFinal(t.estado)"
+                (click)="abrirSesion(t)"
+              >
+                Agregar sesión
+              </button>
+              <button type="button" class="btn btn-peligro btn-sm" (click)="pedirEliminar(t)">
+                Eliminar
+              </button>
+            </div>
+
+            <!-- Alta de sesion -->
+            @if (sesionAbiertaEn() === t.id) {
+              <form
+                class="card card-compacta form-sesion"
+                [formGroup]="formularioSesion"
+                (ngSubmit)="guardarSesion()"
+                novalidate
+              >
+                <h3>Nueva sesión</h3>
+
+                @if (errorSesion(); as mensaje) {
+                  <div class="alerta alerta-error" role="alert">
+                    <span>{{ mensaje }}</span>
+                  </div>
+                }
+
+                <div class="grid-2">
+                  <div class="form-campo">
+                    <label for="sesion-fecha">Fecha</label>
+                    <input id="sesion-fecha" type="date" formControlName="fecha" />
+                  </div>
+                  <div class="form-campo">
+                    <label for="sesion-descripcion"
+                      >Descripción <span class="requerido">*</span></label
+                    >
+                    <input
+                      id="sesion-descripcion"
+                      type="text"
+                      formControlName="descripcion"
+                      placeholder="Ej. Limpieza y profilaxis"
+                      [class.campo-invalido]="
+                        camposSesion.descripcion.invalid && camposSesion.descripcion.touched
+                      "
+                    />
+                    @if (camposSesion.descripcion.touched && camposSesion.descripcion.invalid) {
+                      <span class="form-error"
+                        >Indique una descripción de al menos 3 caracteres.</span
+                      >
+                    }
+                  </div>
+                </div>
+
+                <div class="form-campo">
+                  <label for="sesion-observaciones">Observaciones</label>
+                  <textarea
+                    id="sesion-observaciones"
+                    formControlName="observaciones"
+                    rows="2"
+                  ></textarea>
+                </div>
+
+                <div class="form-acciones">
+                  <button type="button" class="btn btn-secundario" (click)="cerrarSesion()">
+                    Cancelar
+                  </button>
+                  <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+                    @if (guardando()) {
+                      <span class="spinner" aria-hidden="true"></span>
+                    }
+                    Guardar sesión
+                  </button>
+                </div>
+              </form>
+            }
+
+            <!-- Sesiones -->
+            <h3 class="titulo-sesiones">Sesiones</h3>
+            @if (t.sesiones.length === 0) {
+              <div class="estado-vacio">
+                <strong>Sin sesiones</strong>
+                <p class="texto-suave">Este tratamiento todavía no tiene sesiones planificadas.</p>
+              </div>
+            } @else {
+              <div class="tabla-scroll">
+                <table class="tabla">
+                  <thead>
+                    <tr>
+                      <th>N.º</th>
+                      <th>Fecha</th>
+                      <th class="celda-libre">Descripción</th>
+                      <th class="celda-libre">Observaciones</th>
+                      <th>Realizada</th>
+                      <th class="celda-acciones">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (s of t.sesiones; track s.id) {
+                      <tr>
+                        <td class="mono">{{ s.numero }}</td>
+                        <td>{{ fecha(s.fecha) }}</td>
+                        <td class="celda-libre">{{ s.descripcion || '—' }}</td>
+                        <td class="celda-libre">{{ s.observaciones || '—' }}</td>
+                        <td>
+                          <label class="form-check">
+                            <input
+                              type="checkbox"
+                              [checked]="s.realizada"
+                              [disabled]="esFinal(t.estado)"
+                              (change)="alternarSesion(t, s, $event)"
+                            />
+                            <span class="texto-pequeno">{{
+                              s.realizada ? 'Realizada' : 'Pendiente'
+                            }}</span>
+                          </label>
+                        </td>
+                        <td class="celda-acciones">
+                          <button
+                            type="button"
+                            class="btn btn-peligro btn-sm"
+                            [disabled]="esFinal(t.estado)"
+                            (click)="pedirEliminarSesion(t, s)"
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        }
+      </article>
+    } @empty {
+      <div class="card">
+        <div class="estado-vacio">
+          <strong>No hay tratamientos que mostrar</strong>
+          <p class="texto-suave">
+            Ajuste los filtros o registre un nuevo plan de tratamiento para comenzar.
+          </p>
+          <button type="button" class="btn btn-primario" (click)="abrirCrear()">
+            Nuevo tratamiento
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+<!-- --------------------- Dialogo de alta / edicion ---------------------- -->
+@if (formularioAbierto()) {
+  <div class="capa" role="dialog" aria-modal="true" aria-labelledby="titulo-dialogo">
+    <div class="card dialogo">
+      <div class="card-encabezado">
+        <h2 id="titulo-dialogo">
+          {{ editandoId() ? 'Editar tratamiento' : 'Nuevo tratamiento' }}
+        </h2>
+        <button type="button" class="btn btn-fantasma btn-sm" (click)="cerrarFormulario()">
+          Cerrar
+        </button>
+      </div>
+
+      @if (errorFormulario(); as mensaje) {
+        <div class="alerta alerta-error" role="alert">
+          <span>{{ mensaje }}</span>
+        </div>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="tp-paciente">Paciente <span class="requerido">*</span></label>
+            <select
+              id="tp-paciente"
+              formControlName="pacienteId"
+              [class.campo-invalido]="campos.pacienteId.invalid && campos.pacienteId.touched"
+            >
+              <option value="">Seleccione un paciente</option>
+              @for (p of pacientes(); track p.id) {
+                <option [value]="p.id">{{ p.nombreCompleto }} — {{ p.dni }}</option>
+              }
+            </select>
+            @if (campos.pacienteId.touched && campos.pacienteId.invalid) {
+              <span class="form-error">Seleccione el paciente.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="tp-odontologo">Odontólogo <span class="requerido">*</span></label>
+            <select
+              id="tp-odontologo"
+              formControlName="odontologoId"
+              [class.campo-invalido]="campos.odontologoId.invalid && campos.odontologoId.touched"
+            >
+              <option value="">Seleccione un odontólogo</option>
+              @for (o of odontologos(); track o.id) {
+                <option [value]="o.id">{{ o.nombreCompleto }}</option>
+              }
+            </select>
+            @if (campos.odontologoId.touched && campos.odontologoId.invalid) {
+              <span class="form-error">Seleccione el odontólogo responsable.</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-campo">
+          <label for="tp-nombre">Nombre del tratamiento <span class="requerido">*</span></label>
+          <input
+            id="tp-nombre"
+            type="text"
+            formControlName="nombre"
+            placeholder="Ej. Ortodoncia correctiva"
+            [class.campo-invalido]="campos.nombre.invalid && campos.nombre.touched"
+          />
+          @if (campos.nombre.touched && campos.nombre.invalid) {
+            <span class="form-error">Indique un nombre de al menos 3 caracteres.</span>
+          }
+        </div>
+
+        <div class="form-campo">
+          <label for="tp-descripcion">Descripción</label>
+          <textarea id="tp-descripcion" formControlName="descripcion" rows="3"></textarea>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="tp-precio">Precio (S/) <span class="requerido">*</span></label>
+            <input
+              id="tp-precio"
+              type="number"
+              min="0"
+              step="0.01"
+              formControlName="precio"
+              [class.campo-invalido]="campos.precio.invalid && campos.precio.touched"
+            />
+            @if (campos.precio.touched && campos.precio.invalid) {
+              <span class="form-error">El precio debe ser mayor a cero.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="tp-fecha">Fecha de inicio</label>
+            <input id="tp-fecha" type="date" formControlName="fechaInicio" />
+            <span class="form-ayuda">Opcional.</span>
+          </div>
+        </div>
+
+        <div class="form-campo">
+          <label for="tp-observaciones">Observaciones</label>
+          <textarea id="tp-observaciones" formControlName="observaciones" rows="2"></textarea>
+        </div>
+
+        <div class="form-acciones">
+          <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            {{ editandoId() ? 'Guardar cambios' : 'Registrar tratamiento' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ------------------- Confirmacion de borrado ------------------------- -->
+@if (porEliminar(); as objetivo) {
+  <div class="capa" role="dialog" aria-modal="true" aria-labelledby="titulo-borrado">
+    <div class="card dialogo dialogo-corto">
+      <h2 id="titulo-borrado">Eliminar tratamiento</h2>
+      <p>
+        ¿Confirma que desea eliminar el tratamiento
+        <strong>{{ objetivo.nombre }}</strong> de <strong>{{ objetivo.pacienteNombre }}</strong
+        >? Esta acción no se puede deshacer.
+      </p>
+      <p class="texto-pequeno texto-suave">
+        Si el tratamiento ya tiene pagos registrados, el sistema no permitirá eliminarlo.
+      </p>
+      <div class="form-acciones">
+        <button type="button" class="btn btn-secundario" (click)="cancelarEliminar()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-peligro"
+          [disabled]="guardando()"
+          (click)="confirmarEliminar()"
+        >
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (sesionPorEliminar(); as objetivo) {
+  <div class="capa" role="dialog" aria-modal="true" aria-labelledby="titulo-borrado-sesion">
+    <div class="card dialogo dialogo-corto">
+      <h2 id="titulo-borrado-sesion">Eliminar sesión</h2>
+      <p>
+        ¿Desea eliminar la sesión n.º <strong>{{ objetivo.sesion.numero }}</strong>
+        @if (objetivo.sesion.descripcion) {
+          (<em>{{ objetivo.sesion.descripcion }}</em
+          >)
+        }
+        del plan de tratamiento?
+      </p>
+      <div class="form-acciones">
+        <button type="button" class="btn btn-secundario" (click)="cancelarEliminarSesion()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-peligro"
+          [disabled]="guardando()"
+          (click)="confirmarEliminarSesion()"
+        >
+          Eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+}

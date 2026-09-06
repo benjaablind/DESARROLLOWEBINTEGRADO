@@ -1,0 +1,350 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Pagos</h1>
+    <span class="subtitulo">Cobros, estado de cuenta e historial por paciente</span>
+  </div>
+  @if (pacienteId() && !cargando() && !error()) {
+    <button
+      type="button"
+      class="btn btn-primario"
+      [disabled]="tratamientosCobrables().length === 0"
+      (click)="abrirFormulario()"
+    >
+      Registrar pago
+    </button>
+  }
+</div>
+
+<!-- --------------------------- Selector de paciente --------------------- -->
+<div class="card card-compacta">
+  <div class="filtros">
+    <div class="form-campo campo-paciente">
+      <label class="form-etiqueta" for="pg-paciente">Paciente</label>
+      <select
+        id="pg-paciente"
+        [value]="pacienteId() ?? ''"
+        (change)="elegirPaciente($any($event.target).value)"
+      >
+        <option value="">Seleccione un paciente</option>
+        @for (p of pacientes(); track p.id) {
+          <option [value]="p.id">{{ p.nombreCompleto }} — {{ p.dni }}</option>
+        }
+      </select>
+    </div>
+    @if (pacienteId()) {
+      <button type="button" class="btn btn-secundario" (click)="cargar()">Actualizar</button>
+    }
+  </div>
+</div>
+
+@if (!pacienteId()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <strong>Seleccione un paciente</strong>
+      <p class="texto-suave">
+        Elija un paciente para ver su estado de cuenta, sus tratamientos y el historial de pagos.
+      </p>
+    </div>
+  </div>
+} @else if (cargando()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande" aria-hidden="true"></span>
+      <span class="cargando">Cargando estado de cuenta…</span>
+    </div>
+  </div>
+} @else if (error(); as mensaje) {
+  <div class="card">
+    <div class="alerta alerta-error" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+    <button type="button" class="btn btn-secundario" (click)="cargar()">Reintentar</button>
+  </div>
+} @else if (estadoCuenta(); as cuenta) {
+  <!-- ------------------------------ Metricas --------------------------- -->
+  <div class="grid metricas">
+    <div class="card-metrica">
+      <span class="valor">{{ soles(cuenta.totalTratamientos) }}</span>
+      <span class="etiqueta">Total en tratamientos</span>
+    </div>
+    <div class="card-metrica metrica-exito">
+      <span class="valor">{{ soles(cuenta.totalPagado) }}</span>
+      <span class="etiqueta">Total pagado</span>
+    </div>
+    <div class="card-metrica metrica-peligro">
+      <span class="valor">{{ soles(cuenta.saldoPendiente) }}</span>
+      <span class="etiqueta">Saldo pendiente</span>
+    </div>
+  </div>
+
+  @if (sinDatos()) {
+    <div class="card">
+      <div class="estado-vacio">
+        <strong>{{ cuenta.pacienteNombre }} no tiene movimientos</strong>
+        <p class="texto-suave">
+          Este paciente aún no tiene tratamientos registrados ni pagos realizados.
+        </p>
+      </div>
+    </div>
+  } @else {
+    <!-- --------------------------- Tratamientos ------------------------- -->
+    <div class="card seccion">
+      <div class="card-encabezado">
+        <h2>Tratamientos de {{ cuenta.pacienteNombre }}</h2>
+        <span class="texto-pequeno texto-suave">{{ tratamientos().length }} registro(s)</span>
+      </div>
+
+      @if (tratamientos().length === 0) {
+        <div class="estado-vacio">
+          <strong>Sin tratamientos</strong>
+          <p class="texto-suave">No hay tratamientos asociados a este paciente.</p>
+        </div>
+      } @else {
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th class="celda-libre">Tratamiento</th>
+                <th>Estado</th>
+                <th class="texto-derecha">Precio</th>
+                <th class="texto-derecha">Pagado</th>
+                <th class="texto-derecha">Saldo</th>
+                <th>Avance</th>
+                <th class="celda-acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of tratamientos(); track t.id) {
+                <tr>
+                  <td class="celda-libre">{{ t.nombre }}</td>
+                  <td>
+                    <span class="badge badge-neutro">{{
+                      etiquetasEstadoTratamiento[t.estado]
+                    }}</span>
+                  </td>
+                  <td class="texto-derecha">{{ soles(t.precio) }}</td>
+                  <td class="texto-derecha texto-exito">{{ soles(t.totalPagado) }}</td>
+                  <td class="texto-derecha" [class.texto-peligro]="t.saldoPendiente > 0">
+                    {{ soles(t.saldoPendiente) }}
+                  </td>
+                  <td>
+                    <div class="barra" [attr.title]="porcentajePagado(t) + '% pagado'">
+                      <div class="barra-relleno" [style.width.%]="porcentajePagado(t)"></div>
+                    </div>
+                  </td>
+                  <td class="celda-acciones">
+                    <button
+                      type="button"
+                      class="btn btn-secundario btn-sm"
+                      [disabled]="t.saldoPendiente <= 0 || t.estado === 'CANCELADO'"
+                      (click)="abrirFormulario(t)"
+                    >
+                      Registrar pago
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- ----------------------------- Historial -------------------------- -->
+    <div class="card seccion">
+      <div class="card-encabezado">
+        <h2>Historial de pagos</h2>
+        <span class="texto-pequeno texto-suave">{{ pagos().length }} pago(s)</span>
+      </div>
+
+      @if (pagos().length === 0) {
+        <div class="estado-vacio">
+          <strong>Sin pagos registrados</strong>
+          <p class="texto-suave">Todavía no se ha registrado ningún cobro para este paciente.</p>
+        </div>
+      } @else {
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th class="celda-libre">Tratamiento</th>
+                <th class="texto-derecha">Monto</th>
+                <th>Método</th>
+                <th>Comprobante</th>
+                <th class="celda-libre">Observaciones</th>
+                <th class="celda-acciones">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of pagos(); track p.id) {
+                <tr>
+                  <td>{{ fechaHora(p.fecha) }}</td>
+                  <td class="celda-libre">{{ p.tratamientoNombre }}</td>
+                  <td class="texto-derecha negrita">{{ soles(p.monto) }}</td>
+                  <td>
+                    <span class="badge" [class]="badgesMetodo[p.metodo]">{{
+                      etiquetasMetodo[p.metodo]
+                    }}</span>
+                  </td>
+                  <td class="mono">{{ p.comprobante || '—' }}</td>
+                  <td class="celda-libre">{{ p.observaciones || '—' }}</td>
+                  <td class="celda-acciones">
+                    <button type="button" class="btn btn-peligro btn-sm" (click)="pedirAnular(p)">
+                      Anular
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+}
+
+<!-- ---------------------- Dialogo de registro de pago ------------------- -->
+@if (formularioAbierto()) {
+  <div class="capa" role="dialog" aria-modal="true" aria-labelledby="titulo-pago">
+    <div class="card dialogo">
+      <div class="card-encabezado">
+        <h2 id="titulo-pago">Registrar pago</h2>
+        <button type="button" class="btn btn-fantasma btn-sm" (click)="cerrarFormulario()">
+          Cerrar
+        </button>
+      </div>
+
+      @if (errorFormulario(); as mensaje) {
+        <div class="alerta alerta-error" role="alert">
+          <span>{{ mensaje }}</span>
+        </div>
+      }
+
+      @if (excedeSaldo()) {
+        <div class="alerta alerta-advertencia" role="alert">
+          <span>
+            El monto ingresado ({{ soles(montoTecleado()) }}) supera el saldo pendiente del
+            tratamiento ({{ soles(saldoElegido()) }}).
+            @if (excesoConfirmado()) {
+              Pulse otra vez «Registrar pago» solo si está seguro: el servidor puede rechazar la
+              operación.
+            } @else {
+              Revise el importe antes de continuar.
+            }
+          </span>
+        </div>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="registrar()" novalidate>
+        <div class="form-campo">
+          <label for="pg-tratamiento">Tratamiento <span class="requerido">*</span></label>
+          <select
+            id="pg-tratamiento"
+            formControlName="tratamientoId"
+            (change)="cambiarTratamiento($any($event.target).value)"
+            [class.campo-invalido]="campos.tratamientoId.invalid && campos.tratamientoId.touched"
+          >
+            <option value="">Seleccione un tratamiento</option>
+            @for (t of tratamientos(); track t.id) {
+              <option [value]="t.id" [disabled]="t.estado === 'CANCELADO'">
+                {{ t.nombre }} — saldo {{ soles(t.saldoPendiente) }}
+              </option>
+            }
+          </select>
+          @if (campos.tratamientoId.touched && campos.tratamientoId.invalid) {
+            <span class="form-error">Seleccione el tratamiento a cobrar.</span>
+          }
+        </div>
+
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="pg-monto">Monto (S/) <span class="requerido">*</span></label>
+            <input
+              id="pg-monto"
+              type="number"
+              min="0"
+              step="0.01"
+              formControlName="monto"
+              (input)="cambiarMonto($any($event.target).value)"
+              [class.campo-invalido]="campos.monto.invalid && campos.monto.touched"
+            />
+            <span class="form-ayuda">
+              Saldo pendiente del tratamiento: <strong>{{ soles(saldoElegido()) }}</strong>
+            </span>
+            @if (campos.monto.touched && campos.monto.invalid) {
+              <span class="form-error">El monto debe ser mayor a cero.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="pg-metodo">Método de pago <span class="requerido">*</span></label>
+            <select id="pg-metodo" formControlName="metodo">
+              @for (m of metodos; track m) {
+                <option [value]="m">{{ etiquetasMetodo[m] }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-campo">
+          <label for="pg-comprobante">Comprobante</label>
+          <input
+            id="pg-comprobante"
+            type="text"
+            formControlName="comprobante"
+            placeholder="Ej. B001-000123"
+          />
+          <span class="form-ayuda">Opcional: número de boleta, factura u operación.</span>
+        </div>
+
+        <div class="form-campo">
+          <label for="pg-observaciones">Observaciones</label>
+          <textarea id="pg-observaciones" formControlName="observaciones" rows="2"></textarea>
+        </div>
+
+        <div class="form-acciones">
+          <button type="button" class="btn btn-secundario" (click)="cerrarFormulario()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner" aria-hidden="true"></span>
+            }
+            Registrar pago
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ------------------------ Confirmacion de anulacion ------------------- -->
+@if (porAnular(); as objetivo) {
+  <div class="capa" role="dialog" aria-modal="true" aria-labelledby="titulo-anular">
+    <div class="card dialogo dialogo-corto">
+      <h2 id="titulo-anular">Anular pago</h2>
+      <p>
+        ¿Confirma la anulación del pago de <strong>{{ soles(objetivo.monto) }}</strong> del
+        {{ fechaHora(objetivo.fecha) }} aplicado a <strong>{{ objetivo.tratamientoNombre }}</strong
+        >?
+      </p>
+      <p class="texto-pequeno texto-suave">
+        El saldo pendiente del tratamiento se recalculará automáticamente.
+      </p>
+      <div class="form-acciones">
+        <button type="button" class="btn btn-secundario" (click)="cancelarAnular()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-peligro"
+          [disabled]="guardando()"
+          (click)="confirmarAnular()"
+        >
+          Anular pago
+        </button>
+      </div>
+    </div>
+  </div>
+}
