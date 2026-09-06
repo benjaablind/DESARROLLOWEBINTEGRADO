@@ -1,0 +1,94 @@
+/* Estilos propios del listado de pacientes.
+   Todo lo estructural viene de styles.scss; aqui solo se ajustan detalles. */
+
+:host {
+  display: block;
+}
+
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icono-btn {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.card + .card {
+  margin-top: var(--e-4);
+}
+
+.campo-corto {
+  flex: 0 1 180px;
+}
+
+.acciones-filtro {
+  flex: 0 0 auto;
+  padding-bottom: 1px;
+}
+
+.panel-formulario .titulo-seccion {
+  margin: var(--e-5) 0 var(--e-3);
+  padding-bottom: var(--e-2);
+  border-bottom: 1px solid var(--c-borde);
+  font-size: 0.95rem;
+  color: var(--c-primario-700);
+}
+
+.panel-formulario .titulo-seccion:first-of-type {
+  margin-top: 0;
+}
+
+.ayuda-listas {
+  margin-top: calc(var(--e-2) * -1);
+  margin-bottom: var(--e-3);
+}
+
+.acciones-fila {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--e-1);
+}
+
+/* Las celdas de la tabla no envuelven texto: el estado vacio si debe hacerlo. */
+.tabla-vacia {
+  white-space: normal;
+}
+
+.tabla-vacia p {
+  margin: 0;
+}
+
+/* --------------------------- Dialogo de baja --------------------------- */
+
+.dialogo-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--e-4);
+  background: rgba(16, 42, 48, 0.5);
+}
+
+.dialogo {
+  width: 100%;
+  max-width: 440px;
+  box-shadow: var(--s-4);
+}
+
+.dialogo h3 {
+  margin-bottom: var(--e-2);
+}
+
+@media (max-width: 700px) {
+  .acciones-fila {
+    flex-wrap: wrap;
+  }
+}

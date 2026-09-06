@@ -1,0 +1,273 @@
+@if (cargando()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande"></span>
+      <span>Cargando la ficha del paciente...</span>
+    </div>
+  </div>
+} @else if (error(); as mensaje) {
+  <div class="titulo-pagina">
+    <div>
+      <h1>Ficha del paciente</h1>
+      <span class="subtitulo">No fue posible mostrar la información solicitada</span>
+    </div>
+    <a class="btn btn-secundario btn-sm" routerLink="/pacientes">Volver al listado</a>
+  </div>
+
+  <div class="card">
+    <div class="alerta alerta-error" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+    <div class="estado-vacio">
+      <strong>Paciente no disponible</strong>
+      <p class="texto-suave">
+        Verifique el enlace o vuelva al listado para buscar al paciente nuevamente.
+      </p>
+      <div class="fila">
+        <a class="btn btn-primario" routerLink="/pacientes">Volver al listado</a>
+        <button type="button" class="btn btn-secundario" (click)="recargar()">Reintentar</button>
+      </div>
+    </div>
+  </div>
+} @else if (paciente(); as ficha) {
+  <!-- ------------------------------ Encabezado ---------------------------- -->
+  <div class="titulo-pagina">
+    <div>
+      <h1>{{ ficha.nombreCompleto }}</h1>
+      <span class="subtitulo">
+        Documento <span class="mono">{{ ficha.dni }}</span> &middot; {{ textoEdad(ficha.edad) }}
+        &middot;
+        <span [class]="claseEstado(ficha.estado)">{{ etiquetaEstado(ficha.estado) }}</span>
+      </span>
+    </div>
+    <div class="fila">
+      <a class="btn btn-secundario" routerLink="/pacientes">Volver al listado</a>
+      <button
+        type="button"
+        class="btn btn-primario"
+        (click)="abrirEdicion()"
+        [disabled]="editando()"
+      >
+        Editar antecedentes
+      </button>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- ------------------------- Datos personales ------------------------- -->
+    <div class="card">
+      <div class="card-encabezado">
+        <h2>Datos personales</h2>
+      </div>
+
+      <dl class="lista-datos">
+        <div>
+          <dt>Documento</dt>
+          <dd class="mono">{{ ficha.dni }}</dd>
+        </div>
+        <div>
+          <dt>Fecha de nacimiento</dt>
+          <dd>{{ fechaCorta(ficha.fechaNacimiento) }}</dd>
+        </div>
+        <div>
+          <dt>Edad</dt>
+          <dd>{{ textoEdad(ficha.edad) }}</dd>
+        </div>
+        <div>
+          <dt>Sexo</dt>
+          <dd>{{ textoSexo(ficha.sexo) }}</dd>
+        </div>
+        <div>
+          <dt>Teléfono</dt>
+          <dd>{{ texto(ficha.telefono) }}</dd>
+        </div>
+        <div>
+          <dt>Correo electrónico</dt>
+          <dd class="celda-libre">{{ texto(ficha.email) }}</dd>
+        </div>
+        <div>
+          <dt>Dirección</dt>
+          <dd>{{ texto(ficha.direccion) }}</dd>
+        </div>
+        <div>
+          <dt>Distrito</dt>
+          <dd>{{ texto(ficha.distrito) }}</dd>
+        </div>
+        <div>
+          <dt>Ciudad</dt>
+          <dd>{{ texto(ficha.ciudad) }}</dd>
+        </div>
+        <div>
+          <dt>Fecha de registro</dt>
+          <dd>{{ fechaHora(ficha.fechaRegistro) }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- ------------------------- Antecedentes ----------------------------- -->
+    <div class="card">
+      <div class="card-encabezado">
+        <h2>Antecedentes clínicos</h2>
+        @if (!editando()) {
+          <button type="button" class="btn btn-fantasma btn-sm" (click)="abrirEdicion()">
+            Editar
+          </button>
+        }
+      </div>
+
+      @if (editando()) {
+        @if (errorFormulario(); as mensaje) {
+          <div class="alerta alerta-error" role="alert">
+            <span>{{ mensaje }}</span>
+          </div>
+        }
+
+        <form [formGroup]="formulario" (ngSubmit)="guardarAntecedentes()" novalidate>
+          <p class="form-ayuda">
+            Escriba los elementos separados por comas. Ejemplo:
+            <span class="mono">Penicilina, Látex</span>
+          </p>
+
+          <div class="form-campo">
+            <label for="enfermedades">Enfermedades</label>
+            <input id="enfermedades" type="text" formControlName="enfermedades" />
+          </div>
+
+          <div class="form-campo">
+            <label for="alergias">Alergias</label>
+            <input id="alergias" type="text" formControlName="alergias" />
+          </div>
+
+          <div class="form-campo">
+            <label for="medicamentos">Medicamentos</label>
+            <input id="medicamentos" type="text" formControlName="medicamentos" />
+          </div>
+
+          <div class="form-campo">
+            <label for="habitos">Hábitos</label>
+            <input id="habitos" type="text" formControlName="habitos" />
+          </div>
+
+          <div class="form-campo">
+            <label for="antecedentesOdontologicos">Antecedentes odontológicos</label>
+            <textarea
+              id="antecedentesOdontologicos"
+              formControlName="antecedentesOdontologicos"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <div class="form-campo">
+            <label for="observaciones">Observaciones</label>
+            <textarea id="observaciones" formControlName="observaciones" rows="3"></textarea>
+          </div>
+
+          <div class="form-acciones">
+            <button
+              type="button"
+              class="btn btn-secundario"
+              (click)="cancelarEdicion()"
+              [disabled]="guardando()"
+            >
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+              @if (guardando()) {
+                <span class="spinner"></span>
+                <span>Guardando...</span>
+              } @else {
+                <span>Guardar antecedentes</span>
+              }
+            </button>
+          </div>
+        </form>
+      } @else {
+        <div class="bloque-antecedente">
+          <span class="form-etiqueta">Enfermedades</span>
+          <div class="fila">
+            @for (item of listaDe(ficha, 'enfermedades'); track item) {
+              <span class="badge badge-primario">{{ item }}</span>
+            } @empty {
+              <span class="texto-suave">Sin registro</span>
+            }
+          </div>
+        </div>
+
+        <div class="bloque-antecedente">
+          <span class="form-etiqueta">Alergias</span>
+          <div class="fila">
+            @for (item of listaDe(ficha, 'alergias'); track item) {
+              <span class="badge badge-peligro">{{ item }}</span>
+            } @empty {
+              <span class="texto-suave">Sin registro</span>
+            }
+          </div>
+        </div>
+
+        <div class="bloque-antecedente">
+          <span class="form-etiqueta">Medicamentos</span>
+          <div class="fila">
+            @for (item of listaDe(ficha, 'medicamentos'); track item) {
+              <span class="badge badge-info">{{ item }}</span>
+            } @empty {
+              <span class="texto-suave">Sin registro</span>
+            }
+          </div>
+        </div>
+
+        <div class="bloque-antecedente">
+          <span class="form-etiqueta">Hábitos</span>
+          <div class="fila">
+            @for (item of listaDe(ficha, 'habitos'); track item) {
+              <span class="badge badge-advertencia">{{ item }}</span>
+            } @empty {
+              <span class="texto-suave">Sin registro</span>
+            }
+          </div>
+        </div>
+
+        <div class="bloque-antecedente">
+          <span class="form-etiqueta">Antecedentes odontológicos</span>
+          <p class="texto-medio">{{ textoDe(ficha, 'antecedentesOdontologicos') }}</p>
+        </div>
+
+        <div class="bloque-antecedente">
+          <span class="form-etiqueta">Observaciones</span>
+          <p class="texto-medio">{{ textoDe(ficha, 'observaciones') }}</p>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- --------------------------- Enlaces rapidos ------------------------- -->
+  <div class="card">
+    <div class="card-encabezado">
+      <h2>Módulos del paciente</h2>
+      <span class="texto-suave texto-pequeno">
+        Cada enlace abre el módulo con este paciente preseleccionado
+      </span>
+    </div>
+
+    <div class="grid enlaces">
+      @for (enlace of enlaces; track enlace.ruta) {
+        <a class="enlace-modulo" [routerLink]="enlace.ruta" [queryParams]="parametroPaciente()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="enlace.icono" />
+          </svg>
+          <span class="detalle">
+            <strong>{{ enlace.etiqueta }}</strong>
+            <span class="texto-suave texto-pequeno">{{ enlace.descripcion }}</span>
+          </span>
+        </a>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="card">
+    <div class="estado-vacio">
+      <strong>Sin información</strong>
+      <p class="texto-suave">No hay datos para mostrar.</p>
+      <a class="btn btn-secundario" routerLink="/pacientes">Volver al listado</a>
+    </div>
+  </div>
+}
