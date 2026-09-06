@@ -1,0 +1,354 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Archivos clínicos</h1>
+    <span class="subtitulo">Radiografías, fotografías, informes y documentos del paciente</span>
+  </div>
+  <button type="button" class="btn btn-primario" (click)="abrirSubida()" [disabled]="panelSubida()">
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-btn">
+      <path d="M12 16V4M7 9l5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </svg>
+    Subir archivo
+  </button>
+</div>
+
+<!-- ------------------------------- Filtros -------------------------------- -->
+<div class="card card-compacta">
+  @if (errorPacientes(); as mensaje) {
+    <div class="alerta alerta-advertencia" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+  }
+
+  <div class="filtros">
+    <div class="form-campo">
+      <label for="pacienteFiltro">Paciente</label>
+      <select id="pacienteFiltro" [formControl]="filtroPaciente">
+        <option value="">Todos los pacientes</option>
+        @for (paciente of pacientes(); track paciente.id) {
+          <option [value]="paciente.id">
+            {{ paciente.nombreCompleto }} ({{ paciente.dni }})
+          </option>
+        }
+      </select>
+      @if (cargandoPacientes()) {
+        <span class="form-ayuda">Cargando pacientes...</span>
+      }
+    </div>
+
+    <div class="form-campo">
+      <label for="tipoFiltro">Tipo de archivo</label>
+      <select id="tipoFiltro" [formControl]="filtroTipo">
+        <option value="">Todos los tipos</option>
+        @for (tipo of tipos; track tipo) {
+          <option [value]="tipo">{{ etiquetaTipo(tipo) }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="fila acciones-filtro">
+      <button type="button" class="btn btn-secundario" (click)="cargar()" [disabled]="cargando()">
+        Actualizar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ------------------------------- Subida --------------------------------- -->
+@if (panelSubida()) {
+  <div class="card panel-subida">
+    <div class="card-encabezado">
+      <h2>Subir un archivo</h2>
+      <button type="button" class="btn btn-fantasma btn-sm" (click)="cerrarSubida()">Cerrar</button>
+    </div>
+
+    @if (errorSubida(); as mensaje) {
+      <div class="alerta alerta-error" role="alert">
+        <span>{{ mensaje }}</span>
+      </div>
+    }
+
+    <form [formGroup]="formularioSubida" (ngSubmit)="subir()" novalidate>
+      <div class="form-campo">
+        <label for="archivo">Archivo <span class="requerido">*</span></label>
+        <input
+          #entradaArchivo
+          id="archivo"
+          type="file"
+          (change)="alElegirArchivo($event)"
+          accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.txt"
+        />
+        <span class="form-ayuda">
+          Formatos permitidos: jpg, jpeg, png, gif, bmp, webp, pdf, doc, docx y txt. Peso máximo:
+          10 MB.
+        </span>
+      </div>
+
+      @if (seleccionado(); as archivo) {
+        <div class="alerta alerta-info">
+          <span>
+            Archivo elegido: <strong>{{ archivo.name }}</strong> &middot;
+            {{ tamanoLegible(archivo.size) }}
+          </span>
+        </div>
+      }
+
+      <div class="grid-2">
+        <div class="form-campo">
+          <label for="pacienteSubida">Paciente <span class="requerido">*</span></label>
+          <select id="pacienteSubida" formControlName="pacienteId">
+            <option value="">Seleccione un paciente...</option>
+            @for (paciente of pacientes(); track paciente.id) {
+              <option [value]="paciente.id">
+                {{ paciente.nombreCompleto }} ({{ paciente.dni }})
+              </option>
+            }
+          </select>
+          @if (
+            formularioSubida.controls.pacienteId.touched &&
+            formularioSubida.controls.pacienteId.hasError('required')
+          ) {
+            <span class="form-error">Elija el paciente dueño del archivo.</span>
+          }
+        </div>
+
+        <div class="form-campo">
+          <label for="tipoSubida">Tipo <span class="requerido">*</span></label>
+          <select id="tipoSubida" formControlName="tipo">
+            @for (tipo of tipos; track tipo) {
+              <option [value]="tipo">{{ etiquetaTipo(tipo) }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-campo">
+        <label for="descripcionSubida">Descripción</label>
+        <textarea
+          id="descripcionSubida"
+          formControlName="descripcion"
+          rows="2"
+          placeholder="Opcional. Por ejemplo: radiografía panorámica de control."
+        ></textarea>
+        @if (formularioSubida.controls.descripcion.hasError('maxlength')) {
+          <span class="form-error">Máximo 255 caracteres.</span>
+        }
+      </div>
+
+      <p class="texto-pequeno texto-suave">
+        El archivo quedará registrado a nombre de <strong>{{ nombreDelQueSube() }}</strong>.
+      </p>
+
+      <div class="form-acciones">
+        <button
+          type="button"
+          class="btn btn-secundario"
+          (click)="cerrarSubida()"
+          [disabled]="subiendo()"
+        >
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primario" [disabled]="subiendo()">
+          @if (subiendo()) {
+            <span class="spinner"></span>
+            <span>Subiendo...</span>
+          } @else {
+            <span>Subir archivo</span>
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ------------------------------- Galeria -------------------------------- -->
+<div class="card">
+  <div class="card-encabezado">
+    <h2>
+      @if (nombrePacienteFiltro(); as nombre) {
+        Archivos de {{ nombre }}
+      } @else {
+        Todos los archivos
+      }
+    </h2>
+    <span class="texto-suave texto-pequeno">
+      {{ lista().length }} {{ lista().length === 1 ? 'archivo' : 'archivos' }}
+    </span>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande"></span>
+      <span>Cargando archivos...</span>
+    </div>
+  } @else if (error(); as mensaje) {
+    <div class="alerta alerta-error" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+    <div class="texto-centro">
+      <button type="button" class="btn btn-secundario" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else if (lista().length === 0) {
+    <div class="estado-vacio">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-vacio">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      </svg>
+      @if (pacienteSeleccionado()) {
+        <strong>Este paciente todavía no tiene archivos</strong>
+        <p class="texto-suave">Suba una radiografía, un informe o un consentimiento firmado.</p>
+      } @else {
+        <strong>No hay archivos que mostrar</strong>
+        <p class="texto-suave">Elija un paciente o cambie el filtro de tipo.</p>
+      }
+      <button type="button" class="btn btn-primario" (click)="abrirSubida()">Subir archivo</button>
+    </div>
+  } @else {
+    <div class="galeria">
+      @for (archivo of lista(); track archivo.id) {
+        <article class="tarjeta-archivo">
+          <div class="vista-previa">
+            @if (esImagen(archivo)) {
+              <img [src]="urlDescarga(archivo)" [alt]="archivo.nombreOriginal" loading="lazy" />
+            } @else {
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path [attr.d]="icono(archivo.tipo)" />
+              </svg>
+            }
+          </div>
+
+          <div class="cuerpo">
+            <div class="fila">
+              <span [class]="claseTipo(archivo.tipo)">{{ etiquetaTipo(archivo.tipo) }}</span>
+              <span class="espaciador"></span>
+              <span class="texto-suave texto-pequeno">{{ pesoLegible(archivo) }}</span>
+            </div>
+
+            <h3 class="nombre" [title]="archivo.nombreOriginal">{{ archivo.nombreOriginal }}</h3>
+
+            <p class="texto-pequeno texto-suave datos">
+              {{ fechaHora(archivo.fechaSubida) }}<br />
+              Paciente: {{ nombrePaciente(archivo) }}<br />
+              Subido por: {{ nombreUsuario(archivo) }}
+            </p>
+
+            @if (archivo.descripcion) {
+              <p class="texto-pequeno texto-medio descripcion">{{ archivo.descripcion }}</p>
+            } @else {
+              <p class="texto-pequeno texto-suave descripcion">Sin descripción</p>
+            }
+          </div>
+
+          <div class="acciones">
+            <a
+              class="btn btn-secundario btn-sm"
+              [href]="urlDescarga(archivo)"
+              [attr.download]="archivo.nombreOriginal"
+              rel="noopener"
+            >
+              Descargar
+            </a>
+            <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEdicion(archivo)">
+              Editar
+            </button>
+            <button type="button" class="btn btn-peligro btn-sm" (click)="pedirEliminar(archivo)">
+              Eliminar
+            </button>
+          </div>
+        </article>
+      }
+    </div>
+  }
+</div>
+
+<!-- --------------------------- Editar metadatos --------------------------- -->
+@if (editando(); as archivo) {
+  <div class="dialogo-fondo" role="dialog" aria-modal="true" aria-labelledby="tituloEdicion">
+    <div class="dialogo card">
+      <h3 id="tituloEdicion">Editar archivo</h3>
+      <p class="texto-suave texto-pequeno">
+        {{ archivo.nombreOriginal }} &middot; {{ pesoLegible(archivo) }}
+      </p>
+
+      @if (errorEdicion(); as mensaje) {
+        <div class="alerta alerta-error" role="alert">
+          <span>{{ mensaje }}</span>
+        </div>
+      }
+
+      <form [formGroup]="formularioEdicion" (ngSubmit)="guardarEdicion()" novalidate>
+        <div class="form-campo">
+          <label for="tipoEdicion">Tipo</label>
+          <select id="tipoEdicion" formControlName="tipo">
+            @for (tipo of tipos; track tipo) {
+              <option [value]="tipo">{{ etiquetaTipo(tipo) }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-campo">
+          <label for="descripcionEdicion">Descripción</label>
+          <textarea id="descripcionEdicion" formControlName="descripcion" rows="3"></textarea>
+          @if (formularioEdicion.controls.descripcion.hasError('maxlength')) {
+            <span class="form-error">Máximo 255 caracteres.</span>
+          }
+        </div>
+
+        <div class="form-acciones">
+          <button
+            type="button"
+            class="btn btn-secundario"
+            (click)="cerrarEdicion()"
+            [disabled]="guardando()"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner"></span>
+              <span>Guardando...</span>
+            } @else {
+              <span>Guardar cambios</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ------------------------- Confirmar eliminacion ------------------------ -->
+@if (porEliminar(); as archivo) {
+  <div class="dialogo-fondo" role="dialog" aria-modal="true" aria-labelledby="tituloBajaArchivo">
+    <div class="dialogo card">
+      <h3 id="tituloBajaArchivo">Eliminar archivo</h3>
+      <p>
+        ¿Confirma que desea eliminar <strong>{{ archivo.nombreOriginal }}</strong> de la ficha de
+        {{ nombrePaciente(archivo) }}?
+      </p>
+      <p class="texto-suave texto-pequeno">Esta acción no se puede deshacer.</p>
+
+      <div class="form-acciones">
+        <button
+          type="button"
+          class="btn btn-secundario"
+          (click)="cancelarEliminar()"
+          [disabled]="eliminando()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-peligro"
+          (click)="confirmarEliminar()"
+          [disabled]="eliminando()"
+        >
+          @if (eliminando()) {
+            <span class="spinner"></span>
+            <span>Eliminando...</span>
+          } @else {
+            <span>Sí, eliminar</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
