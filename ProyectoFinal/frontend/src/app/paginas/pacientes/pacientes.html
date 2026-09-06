@@ -1,0 +1,376 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Pacientes</h1>
+    <span class="subtitulo">Registro, búsqueda y ficha clínica de los pacientes</span>
+  </div>
+  <button type="button" class="btn btn-primario" (click)="abrirCreacion()">
+    <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-btn">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+    Nuevo paciente
+  </button>
+</div>
+
+<!-- ------------------------------- Filtros ------------------------------- -->
+<div class="card card-compacta">
+  <div class="filtros">
+    <div class="form-campo">
+      <label for="buscar">Buscar</label>
+      <input
+        id="buscar"
+        type="search"
+        [formControl]="filtroTexto"
+        placeholder="Nombre o documento"
+        autocomplete="off"
+      />
+      <span class="form-ayuda">La búsqueda se aplica sola al dejar de escribir.</span>
+    </div>
+
+    <div class="form-campo campo-corto">
+      <label for="estadoFiltro">Estado</label>
+      <select id="estadoFiltro" [formControl]="filtroEstado">
+        <option value="">Todos</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="INACTIVO">Inactivos</option>
+      </select>
+    </div>
+
+    <div class="fila acciones-filtro">
+      <button type="button" class="btn btn-secundario" (click)="cargar()" [disabled]="cargando()">
+        Actualizar
+      </button>
+      @if (hayFiltros()) {
+        <button type="button" class="btn btn-fantasma" (click)="limpiarFiltros()">Limpiar</button>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ---------------------------- Formulario ------------------------------- -->
+@if (formularioAbierto()) {
+  <div class="card panel-formulario">
+    <div class="card-encabezado">
+      <h2>{{ editandoId() === null ? 'Nuevo paciente' : 'Editar paciente' }}</h2>
+      <button type="button" class="btn btn-fantasma btn-sm" (click)="cerrarFormulario()">
+        Cerrar
+      </button>
+    </div>
+
+    @if (cargandoFicha()) {
+      <div class="cargando">
+        <span class="spinner"></span>
+        <span>Cargando los datos del paciente...</span>
+      </div>
+    } @else {
+      @if (errorFormulario(); as mensaje) {
+        <div class="alerta alerta-error" role="alert">
+          <span>{{ mensaje }}</span>
+        </div>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <h3 class="titulo-seccion">Datos personales</h3>
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="dni">Documento <span class="requerido">*</span></label>
+            <input
+              id="dni"
+              type="text"
+              formControlName="dni"
+              inputmode="numeric"
+              maxlength="8"
+              placeholder="8 dígitos"
+            />
+            @if (c.dni.touched && c.dni.hasError('required')) {
+              <span class="form-error">El documento es obligatorio.</span>
+            } @else if (c.dni.touched && c.dni.hasError('pattern')) {
+              <span class="form-error">Debe tener exactamente 8 dígitos.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="fechaNacimiento">Fecha de nacimiento <span class="requerido">*</span></label>
+            <input id="fechaNacimiento" type="date" formControlName="fechaNacimiento" />
+            @if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('required')) {
+              <span class="form-error">La fecha de nacimiento es obligatoria.</span>
+            } @else if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('fechaFutura')) {
+              <span class="form-error">La fecha debe ser anterior a hoy.</span>
+            } @else if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('fechaInvalida')) {
+              <span class="form-error">La fecha no es válida.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="nombres">Nombres <span class="requerido">*</span></label>
+            <input id="nombres" type="text" formControlName="nombres" autocomplete="off" />
+            @if (c.nombres.touched && c.nombres.hasError('required')) {
+              <span class="form-error">Los nombres son obligatorios.</span>
+            } @else if (c.nombres.touched && c.nombres.hasError('maxlength')) {
+              <span class="form-error">Máximo 100 caracteres.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="apellidos">Apellidos <span class="requerido">*</span></label>
+            <input id="apellidos" type="text" formControlName="apellidos" autocomplete="off" />
+            @if (c.apellidos.touched && c.apellidos.hasError('required')) {
+              <span class="form-error">Los apellidos son obligatorios.</span>
+            } @else if (c.apellidos.touched && c.apellidos.hasError('maxlength')) {
+              <span class="form-error">Máximo 100 caracteres.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="sexo">Sexo <span class="requerido">*</span></label>
+            <select id="sexo" formControlName="sexo">
+              <option value="">Seleccione...</option>
+              <option value="M">Masculino</option>
+              <option value="F">Femenino</option>
+            </select>
+            @if (c.sexo.touched && c.sexo.hasError('required')) {
+              <span class="form-error">Indique el sexo del paciente.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="telefono">Teléfono <span class="requerido">*</span></label>
+            <input id="telefono" type="tel" formControlName="telefono" inputmode="numeric" />
+            @if (c.telefono.touched && c.telefono.hasError('required')) {
+              <span class="form-error">El teléfono es obligatorio.</span>
+            } @else if (c.telefono.touched && c.telefono.hasError('pattern')) {
+              <span class="form-error">Solo dígitos, entre 6 y 15.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="email">Correo electrónico</label>
+            <input id="email" type="email" formControlName="email" autocomplete="off" />
+            @if (c.email.touched && c.email.hasError('email')) {
+              <span class="form-error">El correo no tiene un formato válido.</span>
+            } @else {
+              <span class="form-ayuda">Opcional.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="direccion">Dirección</label>
+            <input id="direccion" type="text" formControlName="direccion" autocomplete="off" />
+          </div>
+
+          <div class="form-campo">
+            <label for="distrito">Distrito</label>
+            <input id="distrito" type="text" formControlName="distrito" autocomplete="off" />
+          </div>
+
+          <div class="form-campo">
+            <label for="ciudad">Ciudad</label>
+            <input id="ciudad" type="text" formControlName="ciudad" autocomplete="off" />
+          </div>
+        </div>
+
+        <h3 class="titulo-seccion">Antecedentes clínicos</h3>
+        <p class="form-ayuda ayuda-listas">
+          En enfermedades, alergias, medicamentos y hábitos escriba los elementos separados por
+          comas. Ejemplo: <span class="mono">Diabetes, Hipertensión</span>
+        </p>
+
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="enfermedades">Enfermedades</label>
+            <input id="enfermedades" type="text" formControlName="enfermedades" />
+          </div>
+
+          <div class="form-campo">
+            <label for="alergias">Alergias</label>
+            <input id="alergias" type="text" formControlName="alergias" />
+          </div>
+
+          <div class="form-campo">
+            <label for="medicamentos">Medicamentos</label>
+            <input id="medicamentos" type="text" formControlName="medicamentos" />
+          </div>
+
+          <div class="form-campo">
+            <label for="habitos">Hábitos</label>
+            <input id="habitos" type="text" formControlName="habitos" />
+          </div>
+        </div>
+
+        <div class="form-campo">
+          <label for="antecedentesOdontologicos">Antecedentes odontológicos</label>
+          <textarea
+            id="antecedentesOdontologicos"
+            formControlName="antecedentesOdontologicos"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-campo">
+          <label for="observaciones">Observaciones</label>
+          <textarea id="observaciones" formControlName="observaciones" rows="3"></textarea>
+        </div>
+
+        <div class="form-acciones">
+          <button
+            type="button"
+            class="btn btn-secundario"
+            (click)="cerrarFormulario()"
+            [disabled]="guardando()"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner"></span>
+              <span>Guardando...</span>
+            } @else {
+              <span>{{ editandoId() === null ? 'Registrar paciente' : 'Guardar cambios' }}</span>
+            }
+          </button>
+        </div>
+      </form>
+    }
+  </div>
+}
+
+<!-- ------------------------------- Listado ------------------------------- -->
+<div class="card">
+  <div class="card-encabezado">
+    <h2>Listado de pacientes</h2>
+    <span class="texto-suave texto-pequeno">
+      {{ lista().length }} {{ lista().length === 1 ? 'paciente' : 'pacientes' }}
+    </span>
+  </div>
+
+  @if (cargando()) {
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande"></span>
+      <span>Cargando pacientes...</span>
+    </div>
+  } @else if (error(); as mensaje) {
+    <div class="alerta alerta-error" role="alert">
+      <span>{{ mensaje }}</span>
+    </div>
+    <div class="texto-centro">
+      <button type="button" class="btn btn-secundario" (click)="cargar()">Reintentar</button>
+    </div>
+  } @else {
+    <div class="tabla-scroll">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Documento</th>
+            <th>Nombre</th>
+            <th>Edad</th>
+            <th>Teléfono</th>
+            <th>Estado</th>
+            <th class="celda-acciones">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (paciente of lista(); track paciente.id) {
+            <tr>
+              <td class="mono">{{ paciente.dni }}</td>
+              <td class="celda-libre negrita">{{ paciente.nombreCompleto }}</td>
+              <td>{{ textoEdad(paciente.edad) }}</td>
+              <td>{{ paciente.telefono || '-' }}</td>
+              <td>
+                <span [class]="claseEstado(paciente.estado)">
+                  {{ etiquetaEstado(paciente.estado) }}
+                </span>
+              </td>
+              <td class="celda-acciones">
+                <div class="fila acciones-fila">
+                  <a
+                    class="btn btn-secundario btn-sm"
+                    [routerLink]="['/pacientes', paciente.id]"
+                    title="Ver ficha del paciente"
+                  >
+                    Ver ficha
+                  </a>
+                  <button
+                    type="button"
+                    class="btn btn-secundario btn-sm"
+                    (click)="abrirEdicion(paciente)"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-secundario btn-sm"
+                    (click)="alternarEstado(paciente)"
+                    [disabled]="accionEnCurso() === paciente.id"
+                  >
+                    {{ paciente.estado === 'ACTIVO' ? 'Desactivar' : 'Activar' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-peligro btn-sm"
+                    (click)="pedirBaja(paciente)"
+                    [disabled]="accionEnCurso() === paciente.id"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="tabla-vacia">
+                  @if (hayFiltros()) {
+                    <strong>Sin resultados</strong>
+                    <p class="texto-suave">Ningún paciente coincide con los filtros aplicados.</p>
+                  } @else {
+                    <strong>Todavía no hay pacientes registrados</strong>
+                    <p class="texto-suave">Use el botón "Nuevo paciente" para registrar el primero.</p>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- --------------------------- Confirmar baja ---------------------------- -->
+@if (confirmarBaja(); as objetivo) {
+  <div class="dialogo-fondo" role="dialog" aria-modal="true" aria-labelledby="tituloBaja">
+    <div class="dialogo card">
+      <h3 id="tituloBaja">Eliminar paciente</h3>
+      <p>
+        ¿Confirma que desea eliminar a <strong>{{ objetivo.nombreCompleto }}</strong> (documento
+        <span class="mono">{{ objetivo.dni }}</span>)?
+      </p>
+      <p class="texto-suave texto-pequeno">
+        Esta acción no se puede deshacer. Si el paciente tiene historia clínica, considere
+        desactivarlo en lugar de eliminarlo.
+      </p>
+      <div class="form-acciones">
+        <button
+          type="button"
+          class="btn btn-secundario"
+          (click)="cancelarBaja()"
+          [disabled]="accionEnCurso() !== null"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-peligro"
+          (click)="confirmarEliminacion()"
+          [disabled]="accionEnCurso() !== null"
+        >
+          @if (accionEnCurso() !== null) {
+            <span class="spinner"></span>
+            <span>Eliminando...</span>
+          } @else {
+            <span>Sí, eliminar</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}

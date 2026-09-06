@@ -1,0 +1,87 @@
+/* Estilos propios de la ficha del paciente. */
+
+:host {
+  display: block;
+}
+
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.grid-2 + .card,
+.card + .card {
+  margin-top: var(--e-4);
+}
+
+.titulo-pagina .subtitulo .badge {
+  vertical-align: middle;
+}
+
+.lista-datos dd {
+  word-break: break-word;
+}
+
+.bloque-antecedente {
+  margin-bottom: var(--e-4);
+}
+
+.bloque-antecedente .form-etiqueta {
+  display: block;
+  margin-bottom: var(--e-1);
+}
+
+.bloque-antecedente p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.bloque-antecedente:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------------------------- Enlaces rapidos --------------------------- */
+
+.enlaces {
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+}
+
+.enlace-modulo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  padding: var(--e-3) var(--e-4);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-md);
+  background: var(--c-superficie);
+  color: var(--c-texto);
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.enlace-modulo:hover {
+  border-color: var(--c-primario-400);
+  background: var(--c-primario-50);
+  box-shadow: var(--s-1);
+  text-decoration: none;
+}
+
+.enlace-modulo svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--c-primario);
+}
+
+.enlace-modulo .detalle {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
