@@ -1,0 +1,280 @@
+:host {
+  display: block;
+}
+
+.cascaron {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------ Barra lateral --------------------------- */
+
+.barra-lateral {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  width: var(--anchoBarraLateral);
+  background: var(--c-barra-fondo);
+  color: var(--c-barra-texto);
+  transform: translateX(-100%);
+  transition: transform 0.22s ease;
+}
+
+.barra-abierta .barra-lateral {
+  transform: none;
+  box-shadow: var(--s-4);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  padding: var(--e-4);
+  min-height: var(--altoBarraSuperior);
+  border-bottom: 1px solid var(--c-barra-borde);
+}
+
+.logo {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  color: var(--c-acento);
+  stroke-width: 1.6;
+}
+
+.marca-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.marca-texto strong {
+  font-size: 0.98rem;
+  color: #ffffff;
+}
+
+.marca-texto small {
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: color-mix(in srgb, var(--c-barra-texto) 62%, transparent);
+}
+
+.navegacion {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--e-3) var(--e-2);
+  overflow-y: auto;
+}
+
+.enlace {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--r-md);
+  color: color-mix(in srgb, var(--c-barra-texto) 80%, transparent);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.enlace svg {
+  width: 19px;
+  height: 19px;
+  flex: none;
+  opacity: 0.9;
+}
+
+.enlace:hover {
+  background: var(--c-barra-hover);
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.enlace.activo {
+  background: var(--c-barra-activo);
+  color: #ffffff;
+  box-shadow: inset 3px 0 0 var(--c-acento);
+}
+
+.sin-modulos {
+  padding: var(--e-3);
+  font-size: 0.82rem;
+  color: color-mix(in srgb, var(--c-barra-texto) 65%, transparent);
+}
+
+.pie-barra {
+  padding: var(--e-3) var(--e-4);
+  border-top: 1px solid var(--c-barra-borde);
+  color: color-mix(in srgb, var(--c-barra-texto) 50%, transparent);
+}
+
+/* --------------------------------- Velo --------------------------------- */
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(9, 26, 30, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+}
+
+.barra-abierta .velo {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ------------------------------ Area principal -------------------------- */
+
+.area-principal {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.barra-superior {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-height: var(--altoBarraSuperior);
+  padding: var(--e-2) var(--e-4);
+  background: var(--c-superficie);
+  border-bottom: 1px solid var(--c-borde);
+  box-shadow: var(--s-1);
+}
+
+.boton-menu svg {
+  width: 20px;
+  height: 20px;
+}
+
+.titulo-clinica {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--c-primario-700);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.espaciador {
+  flex: 1 1 auto;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c-primario-50);
+  color: var(--c-primario-700);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.datos-usuario {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.datos-usuario strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.datos-usuario small {
+  font-size: 0.7rem;
+  text-transform: capitalize;
+  color: var(--c-texto-suave);
+}
+
+.salir .icono-salir {
+  width: 16px;
+  height: 16px;
+}
+
+.contenido {
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  padding: var(--e-5) var(--e-4);
+  margin: 0 auto;
+  min-width: 0;
+}
+
+/* -------------------------------- Escalas ------------------------------- */
+
+/* Hasta 640px se esconden las etiquetas largas de la cabecera */
+@media (max-width: 640px) {
+  .datos-usuario,
+  .etiqueta-salir {
+    display: none;
+  }
+
+  .titulo-clinica {
+    font-size: 0.92rem;
+  }
+
+  .contenido {
+    padding: var(--e-4) var(--e-3);
+  }
+}
+
+/* Desde 992px la barra queda fija y el contenido se desplaza a su derecha */
+@media (min-width: 992px) {
+  .barra-lateral {
+    transform: none;
+  }
+
+  .area-principal {
+    margin-left: var(--anchoBarraLateral);
+  }
+
+  .velo,
+  .boton-menu {
+    display: none;
+  }
+}

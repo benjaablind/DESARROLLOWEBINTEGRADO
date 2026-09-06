@@ -1,0 +1,228 @@
+:host {
+  display: block;
+}
+
+.pantalla {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------ Panel de marca -------------------------- */
+
+.panel-marca {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--e-4);
+  padding: var(--e-7) var(--e-6);
+  background: linear-gradient(155deg, var(--c-primario-900), var(--c-primario-700) 65%, var(--c-primario));
+  color: #e6f5f7;
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.logo {
+  width: 34px;
+  height: 34px;
+  color: var(--c-acento);
+  stroke-width: 1.6;
+}
+
+.panel-marca h2 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(1.5rem, 3.4vw, 2.2rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.descripcion {
+  max-width: 46ch;
+  margin: 0;
+  color: rgba(230, 245, 247, 0.78);
+}
+
+.lista-modulos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+  margin: var(--e-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: rgba(230, 245, 247, 0.9);
+}
+
+.lista-modulos li {
+  position: relative;
+  padding-left: 1.4rem;
+}
+
+.lista-modulos li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-acento);
+}
+
+/* --------------------------- Panel del formulario ----------------------- */
+
+.panel-formulario {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e-4);
+  padding: var(--e-6) var(--e-4);
+  background: var(--c-fondo);
+}
+
+.caja {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--e-6);
+  background: var(--c-superficie);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-xl);
+  box-shadow: var(--s-2);
+}
+
+.cabecera {
+  margin-bottom: var(--e-5);
+}
+
+.cabecera h1 {
+  margin-bottom: var(--e-1);
+  font-size: 1.4rem;
+}
+
+.cabecera p {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.icono-alerta {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 2px;
+}
+
+.campo-password {
+  position: relative;
+  display: flex;
+}
+
+.campo-password input {
+  padding-right: 2.6rem;
+}
+
+.ojo {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-texto-suave);
+  cursor: pointer;
+}
+
+.ojo:hover {
+  color: var(--c-primario);
+}
+
+.ojo svg {
+  width: 17px;
+  height: 17px;
+}
+
+button[type='submit'] {
+  margin-top: var(--e-2);
+  padding-block: 0.6rem;
+}
+
+.nota-demo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--e-2);
+  margin: var(--e-5) 0 0;
+  padding: var(--e-3);
+  border: 1px dashed var(--c-borde-fuerte);
+  border-radius: var(--r-md);
+  background: var(--c-superficie-2);
+  font-size: 0.8rem;
+  color: var(--c-texto-medio);
+}
+
+.nota-demo code {
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--r-sm);
+  background: var(--c-primario-50);
+  color: var(--c-primario-700);
+  font-weight: 600;
+}
+
+.pie {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--c-texto-suave);
+}
+
+/* -------------------------------- Escalas ------------------------------- */
+
+@media (max-width: 860px) {
+  .pantalla {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-marca {
+    padding: var(--e-5) var(--e-4);
+    gap: var(--e-3);
+  }
+
+  .panel-marca h2 {
+    max-width: none;
+    font-size: 1.35rem;
+  }
+
+  .lista-modulos {
+    display: none;
+  }
+
+  .panel-formulario {
+    padding: var(--e-5) var(--e-3);
+  }
+
+  .caja {
+    padding: var(--e-5) var(--e-4);
+  }
+}
