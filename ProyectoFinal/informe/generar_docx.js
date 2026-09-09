@@ -273,21 +273,49 @@ function documento(hijos) {
   });
 }
 
+/**
+ * Prepara un Markdown escrito sin marcadores propios: le pone carátula e
+ * índice, deja cada sección de primer nivel en página nueva y descarta las
+ * líneas separadoras, que en Word no aportan nada.
+ */
+function conCaratulaEIndice(md) {
+  const lineas = md.split(/\r?\n/);
+  const salida = ['[PORTADA]', '', '# Índice', '', '[TOC]', ''];
+  let primeraSeccion = true;
+
+  for (const linea of lineas) {
+    if (linea.trim() === '---') continue;
+    if (/^#\s/.test(linea)) continue;           // el título ya está en la carátula
+    if (/^##\s/.test(linea)) {
+      salida.push('[SALTO]');
+      if (primeraSeccion) primeraSeccion = false;
+      salida.push(linea.replace(/^##\s/, '# '));
+      continue;
+    }
+    if (/^###\s/.test(linea)) { salida.push(linea.replace(/^###\s/, '## ')); continue; }
+    if (/^####\s/.test(linea)) { salida.push(linea.replace(/^####\s/, '### ')); continue; }
+    salida.push(linea);
+  }
+  return salida.join('\n');
+}
+
 const trabajos = [
   { md: 'Informe_Proyecto_Final_DWI.md', docx: 'Informe_Proyecto_Final_DWI.docx',
     titulo: 'SISTEMA DE GESTIÓN ODONTOLÓGICA',
     subtitulo: 'Aplicación web con API RESTful en Spring Boot y front-end en Angular — Informe del Proyecto Final' },
-  { md: 'Guion_Exposicion_Semanas_1_a_4.md', docx: 'Guion_Exposicion_Semanas_1_a_4.docx',
-    titulo: 'GUION DE EXPOSICIÓN DEL PROYECTO',
-    subtitulo: 'Reparto por integrante según los temas de las semanas 1 a 4' },
+  { md: '../GUIA_SUSTENTACION.md', docx: '../GUIA_SUSTENTACION.docx',
+    titulo: 'GUÍA DE SUSTENTACIÓN',
+    subtitulo: 'Sistema de Gestión Odontológica — organización de la exposición por integrante',
+    preparar: conCaratulaEIndice },
 ];
 
 (async () => {
   for (const t of trabajos) {
-    const md = fs.readFileSync(path.join(DIR, t.md), 'utf8');
+    let md = fs.readFileSync(path.join(DIR, t.md), 'utf8');
+    if (t.preparar) md = t.preparar(md);
     const doc = documento(convertir(md, t.titulo, t.subtitulo));
     const buffer = await Packer.toBuffer(doc);
     fs.writeFileSync(path.join(DIR, t.docx), buffer);
-    console.log('generado:', t.docx, (buffer.length / 1024).toFixed(0) + ' KB');
+    console.log('generado:', path.basename(t.docx), (buffer.length / 1024).toFixed(0) + ' KB');
   }
 })();
