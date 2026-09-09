@@ -70,6 +70,10 @@ Pantallas disponibles: inicio de sesión, panel de indicadores, pacientes con su
 
 La documentación completa de los endpoints está en [backend/DOCUMENTACION_API.md](backend/DOCUMENTACION_API.md).
 
+Para probar la API sin escribir una sola línea, importa la colección de [postman/](postman/): 65 solicitudes organizadas por módulo, con el caso correcto y el caso de error de cada regla de negocio.
+
+El reparto de la sustentación, el orden de la demostración y las respuestas a las preguntas más probables están en [GUIA_SUSTENTACION.md](GUIA_SUSTENTACION.md).
+
 ## Cómo ejecutar
 
 Necesitas Java 25 y Node 20 o superior. Si Maven no está instalado, usa el wrapper incluido.
