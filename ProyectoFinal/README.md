@@ -76,13 +76,16 @@ El reparto de la sustentación, el orden de la demostración y las respuestas a 
 
 ## Cómo ejecutar
 
-Necesitas Java 25 y Node 20 o superior. Si Maven no está instalado, usa el wrapper incluido.
+Necesitas **Java 25** y Node 20 o superior. Maven no hace falta instalarlo: el proyecto trae el wrapper, `mvnw` en Git Bash y `mvnw.cmd` en PowerShell o CMD.
 
 **Backend**, desde `backend/`:
 
 ```bash
-mvn spring-boot:run
+./mvnw spring-boot:run      # Git Bash
+.\mvnw.cmd spring-boot:run  # PowerShell
 ```
+
+Con un JDK anterior al 25 la compilación falla con `release version 25 not supported`. Como salida temporal se puede añadir `-Djava.version=24`, ajustando el número al JDK instalado; en PowerShell hay que escribirlo entre comillas: `.\mvnw.cmd "-Djava.version=24" spring-boot:run`.
 
 Queda disponible en `http://localhost:8080/api`. Al arrancar carga datos de demostración: usuarios, pacientes, citas, historias, odontograma, tratamientos y pagos.
 
@@ -107,8 +110,11 @@ clave:   admin123
 Desde `backend/`:
 
 ```bash
-mvn test
+./mvnw test      # Git Bash
+.\mvnw.cmd test  # PowerShell
 ```
+
+Son 156 pruebas de integración con JUnit 5 y MockMvc, repartidas en diez clases, una por módulo.
 
 ## Reglas de trabajo del equipo
 
