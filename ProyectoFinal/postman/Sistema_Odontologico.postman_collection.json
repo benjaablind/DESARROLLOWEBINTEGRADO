@@ -1,0 +1,2663 @@
+{
+  "info": {
+    "name": "Sistema de Gestion Odontologica - API REST",
+    "description": "Coleccion de pruebas de la API REST del Sistema de Gestion Odontologica (Proyecto Final - Desarrollo Web Integrado, UTP).\n\nAntes de ejecutar: levantar el backend con `mvn spring-boot:run` desde ProyectoFinal/backend. La API queda en http://localhost:8080/api y carga datos de demostracion al arrancar.\n\nCada carpeta corresponde a un integrante y a su modulo. Las solicitudes estan en el orden de la sustentacion: primero el caso correcto y despues el caso de error, para mostrar la validacion de datos y el manejador global de excepciones.\n\nCada solicitud tiene una prueba automatica que verifica el codigo de estado esperado: al enviarla se ve 'PASS' en la pestana Test Results. Para ejecutar todo de una vez, usar Run collection.\n\nLas fechas y el DNI de prueba se calculan solos en el script de la coleccion, asi que no hay que editar nada a mano.\n\nLa unica solicitud que necesita un archivo local es la subida de la carpeta 6: apunta a radiografia-ejemplo.png, incluido en la carpeta postman del repositorio.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Calcula las fechas y el DNI que usan las solicitudes, para que la coleccion",
+          "// funcione siempre, sin editar nada a mano.",
+          "const dosDigitos = (n) => String(n).padStart(2, '0');",
+          "const soloFecha = (d) => `${d.getFullYear()}-${dosDigitos(d.getMonth() + 1)}-${dosDigitos(d.getDate())}`;",
+          "",
+          "const hoy = new Date();",
+          "const manana = new Date(hoy.getTime() + 24 * 60 * 60 * 1000);",
+          "",
+          "pm.collectionVariables.set('hoy', soloFecha(hoy));",
+          "pm.collectionVariables.set('manana', soloFecha(manana));",
+          "pm.collectionVariables.set('fechaFutura', soloFecha(manana) + 'T15:00:00');",
+          "pm.collectionVariables.set('fechaFutura2', soloFecha(manana) + 'T18:30:00');",
+          "pm.collectionVariables.set('desde', hoy.getFullYear() + '-01-01');",
+          "pm.collectionVariables.set('hasta', hoy.getFullYear() + '-12-31');",
+          "",
+          "// DNI de 8 digitos distinto en cada ejecucion, para poder crear y luego repetir.",
+          "if (!pm.collectionVariables.get('dniNuevo')) {",
+          "  pm.collectionVariables.set('dniNuevo', '4' + String(Date.now()).slice(-7));",
+          "}",
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Autenticacion y usuarios - Integrante 1",
+      "description": "Inicio de sesion, gestion de usuarios y permisos por rol. Muestra POST, GET, PATCH y DELETE.",
+      "item": [
+        {
+          "name": "Login correcto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('El usuario queda autenticado', function () {",
+                  "    pm.expect(pm.response.json().autenticado).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Credenciales de demostracion. Devuelve el usuario autenticado, nunca la contrasena.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login con credenciales incorrectas (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Caso de error: el manejador global devuelve la estructura unica de error.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"admin\",\n  \"password\": \"clave-incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Listado completo. La contrasena nunca viaja en la respuesta."
+          }
+        },
+        {
+          "name": "Listar solo odontologos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios?rol=ODONTOLOGO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "rol",
+                  "value": "ODONTOLOGO"
+                }
+              ]
+            },
+            "description": "Filtro por parametro de consulta: @RequestParam opcional."
+          }
+        },
+        {
+          "name": "Crear usuario (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable usuarioCreadoId', function () {",
+                  "    pm.collectionVariables.set('usuarioCreadoId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Creacion con 201 y cabecera Location.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"Ana\",\n  \"apellidos\": \"Quispe Rojas\",\n  \"email\": \"aquispe@clinica.pe\",\n  \"usuario\": \"aquispe\",\n  \"password\": \"aquispe123\",\n  \"rol\": \"RECEPCIONISTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear usuario repetido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Regla de negocio: el nombre de usuario no puede repetirse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"Otra\",\n  \"apellidos\": \"Persona\",\n  \"email\": \"otra@clinica.pe\",\n  \"usuario\": \"aquispe\",\n  \"password\": \"otra123456\",\n  \"rol\": \"ASISTENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear usuario con email invalido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "description": "Validacion declarativa del DTO: @Email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombres\": \"Mal\",\n  \"apellidos\": \"Correo\",\n  \"email\": \"esto-no-es-un-email\",\n  \"usuario\": \"malcorreo\",\n  \"password\": \"clave123\",\n  \"rol\": \"ASISTENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Permisos segun el rol",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/permisos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "1",
+                "permisos"
+              ]
+            },
+            "description": "Permisos derivados del rol del usuario."
+          }
+        },
+        {
+          "name": "Desactivar usuario (baja logica)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioCreadoId}}/desactivar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuarioCreadoId}}",
+                "desactivar"
+              ]
+            },
+            "description": "PATCH sobre un subrecurso: cambia solo el estado de la cuenta."
+          }
+        },
+        {
+          "name": "Eliminar usuario (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuarioCreadoId}}"
+              ]
+            },
+            "description": "Eliminacion: 204 No Content, sin cuerpo en la respuesta."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Pacientes - Integrante 2",
+      "description": "CRUD completo del modulo de pacientes. Es el recorrido mas claro de los cinco verbos HTTP.",
+      "item": [
+        {
+          "name": "Listar pacientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "Listado resumido de todos los pacientes."
+          }
+        },
+        {
+          "name": "Buscar por texto y estado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes?texto=torres&estado=ACTIVO",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ],
+              "query": [
+                {
+                  "key": "texto",
+                  "value": "torres"
+                },
+                {
+                  "key": "estado",
+                  "value": "ACTIVO"
+                }
+              ]
+            },
+            "description": "Dos @RequestParam opcionales y combinables."
+          }
+        },
+        {
+          "name": "Consultar un paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "1"
+              ]
+            },
+            "description": "@PathVariable: el identificador va en la ruta. Devuelve la ficha con antecedentes."
+          }
+        },
+        {
+          "name": "Consultar un paciente inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 404', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "999"
+              ]
+            },
+            "description": "RecursoNoEncontradoException traducida a 404 por el manejador global."
+          }
+        },
+        {
+          "name": "Crear paciente (201 + Location)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable pacienteCreadoId', function () {",
+                  "    pm.collectionVariables.set('pacienteCreadoId', pm.response.json().id);",
+                  "});",
+                  "",
+                  "pm.test('Devuelve la cabecera Location', function () {",
+                  "    pm.response.to.have.header('Location');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "Creacion correcta. Revisar la pestana Headers: la cabecera Location trae la URI del recurso creado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"{{dniNuevo}}\",\n  \"nombres\": \"Pedro Luis\",\n  \"apellidos\": \"Gonzales Diaz\",\n  \"fechaNacimiento\": \"1995-03-15\",\n  \"sexo\": \"M\",\n  \"telefono\": \"900111222\",\n  \"email\": \"pedro@correo.pe\",\n  \"direccion\": \"Jr. Union 456\",\n  \"distrito\": \"Brena\",\n  \"ciudad\": \"Lima\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear con DNI invalido (400 por validacion)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "El DNI no cumple @Pattern: la validacion ocurre antes de entrar al controlador.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"123\",\n  \"nombres\": \"Pedro\",\n  \"apellidos\": \"Gonzales Diaz\",\n  \"fechaNacimiento\": \"1995-03-15\",\n  \"sexo\": \"M\",\n  \"telefono\": \"900111222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear con DNI repetido (400 por regla de negocio)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "El formato es correcto, pero el servicio detecta que el DNI ya existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"{{dniNuevo}}\",\n  \"nombres\": \"Otro\",\n  \"apellidos\": \"Paciente Prueba\",\n  \"fechaNacimiento\": \"1990-01-01\",\n  \"sexo\": \"F\",\n  \"telefono\": \"900111333\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar paciente (PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/{{pacienteCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteCreadoId}}"
+              ]
+            },
+            "description": "PUT reemplaza todos los datos del paciente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"{{dniNuevo}}\",\n  \"nombres\": \"Pedro Luis\",\n  \"apellidos\": \"Gonzales Diaz\",\n  \"fechaNacimiento\": \"1995-03-15\",\n  \"sexo\": \"M\",\n  \"telefono\": \"955000111\",\n  \"email\": \"pedro.nuevo@correo.pe\",\n  \"direccion\": \"Av. Grau 100\",\n  \"distrito\": \"Barranco\",\n  \"ciudad\": \"Lima\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar solo los antecedentes (PATCH)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/{{pacienteCreadoId}}/antecedentes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteCreadoId}}",
+                "antecedentes"
+              ]
+            },
+            "description": "PATCH modifica una parte del recurso: aqui solo los antecedentes medicos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enfermedades\": [\n    \"Hipertension arterial\"\n  ],\n  \"alergias\": [\n    \"Penicilina\"\n  ],\n  \"medicamentos\": [\n    \"Losartan 50mg\"\n  ],\n  \"habitos\": [\n    \"Bruxismo nocturno\"\n  ],\n  \"antecedentesOdontologicos\": \"Ortodoncia entre 2010 y 2012\",\n  \"observaciones\": \"Control de presion antes de cualquier procedimiento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Desactivar paciente (PATCH estado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/{{pacienteCreadoId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteCreadoId}}",
+                "estado"
+              ]
+            },
+            "description": "Cambio de estado sin tocar el resto de la ficha.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"INACTIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Eliminar paciente (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes/{{pacienteCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes",
+                "{{pacienteCreadoId}}"
+              ]
+            },
+            "description": "Deja el sistema como estaba antes de la demostracion."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Citas, agenda y dashboard - Integrante 3",
+      "description": "Agenda con reglas de horario. Es el modulo con mas variedad de verbos y de parametros.",
+      "item": [
+        {
+          "name": "Listar citas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas"
+              ]
+            },
+            "description": "Listado completo de citas."
+          }
+        },
+        {
+          "name": "Agenda del dia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/agenda?dia={{hoy}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "agenda"
+              ],
+              "query": [
+                {
+                  "key": "dia",
+                  "value": "{{hoy}}"
+                }
+              ]
+            },
+            "description": "Agenda de la fecha indicada."
+          }
+        },
+        {
+          "name": "Horas ocupadas de un odontologo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/disponibilidad?odontologoId=2&dia={{hoy}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "disponibilidad"
+              ],
+              "query": [
+                {
+                  "key": "odontologoId",
+                  "value": "2"
+                },
+                {
+                  "key": "dia",
+                  "value": "{{hoy}}"
+                }
+              ]
+            },
+            "description": "Devuelve las horas ya tomadas, para no ofrecerlas al recepcionista."
+          }
+        },
+        {
+          "name": "Crear cita (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable citaCreadaId', function () {",
+                  "    pm.collectionVariables.set('citaCreadaId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas"
+              ]
+            },
+            "description": "Creacion correcta de una cita para manana.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"odontologoId\": 2,\n  \"fechaHora\": \"{{fechaFutura}}\",\n  \"duracionMinutos\": 30,\n  \"motivo\": \"Control de ortodoncia\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear cita con horario cruzado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas"
+              ]
+            },
+            "description": "Regla de negocio central del modulo: un odontologo no puede tener dos citas solapadas.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 3,\n  \"odontologoId\": 2,\n  \"fechaHora\": \"{{fechaFutura}}\",\n  \"duracionMinutos\": 30,\n  \"motivo\": \"Limpieza dental\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear cita con fecha pasada (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/citas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas"
+              ]
+            },
+            "description": "Validacion @Future en el DTO: no se registran citas en el pasado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"odontologoId\": 2,\n  \"fechaHora\": \"2020-01-01T10:00:00\",\n  \"duracionMinutos\": 30,\n  \"motivo\": \"Cita en el pasado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Confirmar cita",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/{{citaCreadaId}}/confirmar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaCreadaId}}",
+                "confirmar"
+              ]
+            },
+            "description": "Transicion de estado PENDIENTE a CONFIRMADA."
+          }
+        },
+        {
+          "name": "Reprogramar cita",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable citaReprogramadaId', function () {",
+                  "    pm.collectionVariables.set('citaReprogramadaId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/citas/{{citaCreadaId}}/reprogramar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaCreadaId}}",
+                "reprogramar"
+              ]
+            },
+            "description": "Crea una cita nueva vinculada a la original y marca la anterior como REPROGRAMADA.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevaFechaHora\": \"{{fechaFutura2}}\",\n  \"motivo\": \"El paciente pidio otro horario\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancelar la cita reprogramada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/{{citaReprogramadaId}}/cancelar?motivo=El paciente aviso que no podra asistir",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaReprogramadaId}}",
+                "cancelar"
+              ],
+              "query": [
+                {
+                  "key": "motivo",
+                  "value": "El paciente aviso que no podra asistir"
+                }
+              ]
+            },
+            "description": "Cancelacion con motivo. Una cita cancelada ya no ocupa la agenda."
+          }
+        },
+        {
+          "name": "Eliminar cita",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/citas/{{citaReprogramadaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "citas",
+                "{{citaReprogramadaId}}"
+              ]
+            },
+            "description": "Limpieza de la demostracion."
+          }
+        },
+        {
+          "name": "Indicadores del dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ]
+            },
+            "description": "Un unico GET que compone informacion de varios modulos en un solo DTO de respuesta."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Historia clinica y odontograma - Integrante 4",
+      "description": "Informacion clinica que no se sobrescribe. Sin PUT ni DELETE, a proposito.",
+      "item": [
+        {
+          "name": "Historial completo de un paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/historias/paciente/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historias",
+                "paciente",
+                "1"
+              ]
+            },
+            "description": "Todas las consultas del paciente, incluidas las anuladas."
+          }
+        },
+        {
+          "name": "Registrar una consulta (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable historiaCreadaId', function () {",
+                  "    pm.collectionVariables.set('historiaCreadaId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/historias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historias"
+              ]
+            },
+            "description": "Registro de una atencion clinica completa.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"odontologoId\": 2,\n  \"motivoConsulta\": \"Dolor al masticar en el lado derecho\",\n  \"anamnesis\": \"Dolor intermitente desde hace una semana, aumenta con el frio\",\n  \"examenClinico\": \"Pieza 46 con caries profunda, prueba de vitalidad positiva\",\n  \"diagnostico\": \"Caries dental profunda en pieza 46\",\n  \"procedimiento\": \"Remocion de caries y obturacion provisional\",\n  \"tratamiento\": \"Endodoncia programada\",\n  \"medicamentos\": \"Ibuprofeno 400mg cada 8 horas por 3 dias\",\n  \"observaciones\": \"Citar en una semana para control\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar sin diagnostico (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/historias",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historias"
+              ]
+            },
+            "description": "El diagnostico es obligatorio: @NotBlank en el DTO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"odontologoId\": 2,\n  \"motivoConsulta\": \"Control\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Anular una consulta con su motivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/historias/{{historiaCreadaId}}/anular",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historias",
+                "{{historiaCreadaId}}",
+                "anular"
+              ]
+            },
+            "description": "No hay DELETE: la consulta se anula indicando el motivo y permanece en el historial.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Registrada por error en el paciente equivocado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Verificar que la consulta anulada sigue en el historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/historias/paciente/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "historias",
+                "paciente",
+                "1"
+              ]
+            },
+            "description": "La informacion historica no se pierde: la consulta anulada se sigue viendo."
+          }
+        },
+        {
+          "name": "Odontograma completo del paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/odontograma/paciente/2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "odontograma",
+                "paciente",
+                "2"
+              ]
+            },
+            "description": "Estado actual de cada pieza dental segun la notacion FDI."
+          }
+        },
+        {
+          "name": "Registrar estado de una pieza (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/odontograma",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "odontograma"
+              ]
+            },
+            "description": "Cada cambio crea un registro nuevo; el estado actual es el ultimo registro.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 2,\n  \"odontologoId\": 2,\n  \"numeroPieza\": 46,\n  \"estado\": \"OBTURADO\",\n  \"superficie\": \"Oclusal\",\n  \"diagnostico\": \"Caries removida\",\n  \"tratamiento\": \"Obturacion con resina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar una pieza inexistente (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/odontograma",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "odontograma"
+              ]
+            },
+            "description": "La pieza 99 no existe en la notacion FDI: validacion @Min y @Max en el DTO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 2,\n  \"odontologoId\": 2,\n  \"numeroPieza\": 99,\n  \"estado\": \"OBTURADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Historial de una pieza dental",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/odontograma/paciente/2/pieza/46",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "odontograma",
+                "paciente",
+                "2",
+                "pieza",
+                "46"
+              ]
+            },
+            "description": "Trazabilidad completa de la pieza: todos sus estados, en orden."
+          }
+        },
+        {
+          "name": "Resumen de piezas por estado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/odontograma/paciente/2/resumen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "odontograma",
+                "paciente",
+                "2",
+                "resumen"
+              ]
+            },
+            "description": "Cuantas piezas hay en cada estado."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Tratamientos y pagos - Integrante 5",
+      "description": "Tratamientos con sesiones y pagos con saldo. Reglas de negocio calculadas, no declarativas.",
+      "item": [
+        {
+          "name": "Listar tratamientos activos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos?soloActivos=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos"
+              ],
+              "query": [
+                {
+                  "key": "soloActivos",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Filtro por parametro de consulta."
+          }
+        },
+        {
+          "name": "Detalle con sesiones y saldo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos",
+                "1"
+              ]
+            },
+            "description": "El saldo pendiente se calcula a partir del precio y de los pagos registrados."
+          }
+        },
+        {
+          "name": "Crear tratamiento (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable tratamientoCreadoId', function () {",
+                  "    pm.collectionVariables.set('tratamientoCreadoId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos"
+              ]
+            },
+            "description": "Alta de un tratamiento nuevo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"odontologoId\": 2,\n  \"nombre\": \"Profilaxis y destartraje\",\n  \"descripcion\": \"Limpieza dental completa en dos sesiones\",\n  \"precio\": 200.0,\n  \"observaciones\": \"Paciente con acumulacion de sarro\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear con precio negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos"
+              ]
+            },
+            "description": "Validacion @Positive en el DTO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pacienteId\": 1,\n  \"odontologoId\": 2,\n  \"nombre\": \"Tratamiento con precio invalido\",\n  \"precio\": -50.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Agregar una sesion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos/{{tratamientoCreadoId}}/sesiones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos",
+                "{{tratamientoCreadoId}}",
+                "sesiones"
+              ]
+            },
+            "description": "Un tratamiento agrupa varias sesiones.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fecha\": \"{{manana}}\",\n  \"descripcion\": \"Primera sesion de destartraje\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cambiar el estado a EN_PROCESO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos/{{tratamientoCreadoId}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos",
+                "{{tratamientoCreadoId}}",
+                "estado"
+              ]
+            },
+            "description": "Transicion de estado del tratamiento.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EN_PROCESO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar un pago parcial (201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable pagoCreadoId', function () {",
+                  "    pm.collectionVariables.set('pagoCreadoId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos"
+              ]
+            },
+            "description": "Pago parcial: el saldo pendiente baja, nunca queda negativo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tratamientoId\": \"{{tratamientoCreadoId}}\",\n  \"monto\": 120.0,\n  \"metodo\": \"YAPE\",\n  \"comprobante\": \"B001-00045\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar un pago mayor al saldo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos"
+              ]
+            },
+            "description": "Regla de negocio del modulo: el monto no puede superar el saldo pendiente.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tratamientoId\": \"{{tratamientoCreadoId}}\",\n  \"monto\": 99999.0,\n  \"metodo\": \"EFECTIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Estado de cuenta del paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos/estado-cuenta/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos",
+                "estado-cuenta",
+                "1"
+              ]
+            },
+            "description": "Total de tratamientos, total pagado y saldo pendiente."
+          }
+        },
+        {
+          "name": "Eliminar un tratamiento con pagos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos/{{tratamientoCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos",
+                "{{tratamientoCreadoId}}"
+              ]
+            },
+            "description": "No se elimina un tratamiento que ya tiene pagos registrados."
+          }
+        },
+        {
+          "name": "Eliminar el pago",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos/{{pagoCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos",
+                "{{pagoCreadoId}}"
+              ]
+            },
+            "description": "Limpieza de la demostracion: primero el pago."
+          }
+        },
+        {
+          "name": "Eliminar el tratamiento (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tratamientos/{{tratamientoCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tratamientos",
+                "{{tratamientoCreadoId}}"
+              ]
+            },
+            "description": "Ahora si se puede eliminar, porque ya no tiene pagos."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Archivos clinicos y reportes - Integrante 6",
+      "description": "Subida de archivos con multipart/form-data y reportes por periodo.",
+      "item": [
+        {
+          "name": "Subir un archivo clinico (201)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Olvida el archivo de una ejecucion anterior, para no arrastrar su id.",
+                  "pm.collectionVariables.unset('archivoCreadoId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Guarda el id en la variable archivoCreadoId', function () {",
+                  "    pm.collectionVariables.set('archivoCreadoId', pm.response.json().id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos"
+              ]
+            },
+            "description": "Unica solicitud que no viaja en JSON: usa multipart/form-data.\n\nEl archivo ya viene apuntado a 'radiografia-ejemplo.png', que esta en esta misma carpeta del repositorio. Si Postman avisa que no lo encuentra, hay dos opciones: ir a Body > form-data, fila 'archivo', pulsar 'Select Files' y elegirlo a mano, o dejarlo fijo en Settings > General > Working directory, apuntando a la carpeta ProyectoFinal/postman.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "archivo",
+                  "type": "file",
+                  "src": "radiografia-ejemplo.png",
+                  "description": "Imagen de ejemplo incluida en la carpeta postman del repositorio"
+                },
+                {
+                  "key": "pacienteId",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "usuarioId",
+                  "value": "2",
+                  "type": "text"
+                },
+                {
+                  "key": "tipo",
+                  "value": "RADIOGRAFIA",
+                  "type": "text"
+                },
+                {
+                  "key": "descripcion",
+                  "value": "Radiografia panoramica de control",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar archivos de un paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos?pacienteId=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos"
+              ],
+              "query": [
+                {
+                  "key": "pacienteId",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Metadatos de los archivos. La ruta fisica nunca aparece en la respuesta."
+          }
+        },
+        {
+          "name": "Metadatos de un archivo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('archivoCreadoId')) {",
+                  "  console.log('Se omite: primero hay que subir un archivo en la solicitud anterior.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos/{{archivoCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos",
+                "{{archivoCreadoId}}"
+              ]
+            },
+            "description": "Consulta individual por identificador."
+          }
+        },
+        {
+          "name": "Descargar el archivo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('archivoCreadoId')) {",
+                  "  console.log('Se omite: primero hay que subir un archivo en la solicitud anterior.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos/{{archivoCreadoId}}/descargar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos",
+                "{{archivoCreadoId}}",
+                "descargar"
+              ]
+            },
+            "description": "El binario solo se obtiene por este endpoint. En Postman se ve en la pestana de respuesta."
+          }
+        },
+        {
+          "name": "Eliminar el archivo (204)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('archivoCreadoId')) {",
+                  "  console.log('Se omite: primero hay que subir un archivo en la solicitud anterior.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos/{{archivoCreadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos",
+                "{{archivoCreadoId}}"
+              ]
+            },
+            "description": "Elimina el registro y el binario del disco."
+          }
+        },
+        {
+          "name": "Reporte de pacientes registrados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/pacientes?desde={{desde}}&hasta={{hasta}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "pacientes"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{desde}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hasta}}"
+                }
+              ]
+            },
+            "description": "Reporte por periodo. Las fechas van en formato aaaa-mm-dd."
+          }
+        },
+        {
+          "name": "Reporte de citas por periodo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/citas?desde={{desde}}&hasta={{hasta}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "citas"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{desde}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hasta}}"
+                }
+              ]
+            },
+            "description": "Citas del periodo agrupadas por estado."
+          }
+        },
+        {
+          "name": "Reporte de ingresos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ingresos?desde={{desde}}&hasta={{hasta}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "ingresos"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{desde}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hasta}}"
+                }
+              ]
+            },
+            "description": "Ingresos totales, por metodo de pago y por mes."
+          }
+        },
+        {
+          "name": "Reporte de pagos pendientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/pagos-pendientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "pagos-pendientes"
+              ]
+            },
+            "description": "Tratamientos con saldo por cobrar."
+          }
+        },
+        {
+          "name": "Historial consolidado de un paciente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/historial/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "historial",
+                "1"
+              ]
+            },
+            "description": "Reune en una sola respuesta citas, historias, tratamientos y pagos del paciente."
+          }
+        },
+        {
+          "name": "Reporte con fechas invertidas (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/citas?desde={{hasta}}&hasta={{desde}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "citas"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{hasta}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{desde}}"
+                }
+              ]
+            },
+            "description": "Validacion de negocio: la fecha inicial no puede ser posterior a la final."
+          }
+        }
+      ]
+    }
+  ]
+}
