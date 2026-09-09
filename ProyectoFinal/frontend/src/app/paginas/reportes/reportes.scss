@@ -1,0 +1,175 @@
+/* Estilos propios de la pantalla de reportes. */
+
+:host {
+  display: block;
+}
+
+/* ------------------------------- Pestanas ------------------------------- */
+
+.pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-1);
+  margin-bottom: var(--e-4);
+  padding: var(--e-1);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-lg);
+  background: var(--c-superficie);
+  box-shadow: var(--s-1);
+}
+
+.pestana {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--c-texto-medio);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.pestana:hover {
+  background: var(--c-primario-50);
+  color: var(--c-primario-700);
+}
+
+.pestana-activa,
+.pestana-activa:hover {
+  background: var(--c-primario);
+  border-color: var(--c-primario);
+  color: var(--c-primario-contraste);
+}
+
+/* -------------------------------- Filtros ------------------------------- */
+
+.atajos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e-1);
+  padding-bottom: 0.1rem;
+}
+
+.campo-paciente {
+  flex: 1 1 320px;
+}
+
+.fila-acciones {
+  margin: var(--e-3) 0;
+}
+
+/* ------------------------------- Metricas ------------------------------- */
+
+.metricas {
+  margin: var(--e-4) 0;
+}
+
+.metrica-exito {
+  border-left-color: var(--c-exito);
+}
+.metrica-exito .valor {
+  color: var(--c-exito);
+}
+
+.metrica-advertencia {
+  border-left-color: var(--c-advertencia);
+}
+.metrica-advertencia .valor {
+  color: var(--c-advertencia);
+}
+
+.metrica-peligro {
+  border-left-color: var(--c-peligro);
+}
+.metrica-peligro .valor {
+  color: var(--c-peligro);
+}
+
+.metrica-neutra {
+  border-left-color: var(--c-borde-fuerte);
+}
+.metrica-neutra .valor {
+  color: var(--c-texto-medio);
+}
+
+.seccion {
+  margin-bottom: var(--e-4);
+}
+
+.ficha-paciente h2 {
+  margin-bottom: var(--e-1);
+}
+
+.texto-exito {
+  color: var(--c-exito);
+}
+
+.texto-peligro {
+  color: var(--c-peligro);
+}
+
+/* -------------------------- Grafico de barras --------------------------- */
+
+.grafico {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-2);
+}
+
+.grafico-fila {
+  display: grid;
+  grid-template-columns: minmax(90px, 150px) 1fr minmax(80px, auto);
+  align-items: center;
+  gap: var(--e-3);
+}
+
+.grafico-etiqueta {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--c-texto-medio);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grafico-pista {
+  height: 18px;
+  border-radius: var(--r-sm);
+  background: var(--c-superficie-2);
+  overflow: hidden;
+}
+
+.grafico-barra {
+  height: 100%;
+  border-radius: var(--r-sm);
+  background: var(--c-primario);
+  transition: width 0.3s ease;
+}
+
+.grafico-barra-acento {
+  background: var(--c-acento);
+}
+
+.grafico-valor {
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: right;
+  color: var(--c-texto);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .grafico-fila {
+    grid-template-columns: 1fr;
+    gap: var(--e-1);
+  }
+
+  .grafico-valor {
+    text-align: left;
+  }
+}
