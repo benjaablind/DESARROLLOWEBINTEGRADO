@@ -1,0 +1,393 @@
+<div class="titulo-pagina">
+  <div>
+    <h1>Historia clinica</h1>
+    <span class="subtitulo">Atenciones registradas por paciente</span>
+  </div>
+
+  <button
+    type="button"
+    class="btn btn-primario"
+    (click)="abrirFormulario()"
+    [disabled]="pacientes().length === 0"
+  >
+    Registrar consulta
+  </button>
+</div>
+
+<!-- ========================= Seleccion del paciente ====================== -->
+<div class="card card-compacta">
+  <div class="filtros">
+    <div class="form-campo">
+      <label for="h-paciente">Paciente</label>
+      <select id="h-paciente" [value]="pacienteId()" (change)="cambiarPaciente($event)">
+        <option value="">Seleccione un paciente</option>
+        @for (paciente of pacientes(); track paciente.id) {
+          <!-- [selected] es necesario: las opciones llegan despues que el valor -->
+          <option [value]="paciente.id" [selected]="esPacienteElegido(paciente.id)">
+            {{ paciente.nombreCompleto }} - {{ paciente.dni }}
+          </option>
+        }
+      </select>
+    </div>
+
+    @if (pacienteId() && !cargando() && historias().length > 0) {
+      <div class="fila">
+        <span class="badge badge-primario">{{ totalVigentes() }} vigentes</span>
+        @if (totalAnuladas() > 0) {
+          <span class="badge badge-peligro">{{ totalAnuladas() }} anuladas</span>
+        }
+        <button type="button" class="btn btn-secundario btn-sm" (click)="expandirTodas()">
+          Expandir todo
+        </button>
+        <button type="button" class="btn btn-secundario btn-sm" (click)="contraerTodas()">
+          Contraer todo
+        </button>
+      </div>
+    }
+  </div>
+
+  <div class="alerta alerta-info">
+    <span>
+      Las consultas de la historia clinica <strong>no se editan ni se borran</strong>: la
+      informacion historica no se sobrescribe. Si un registro es incorrecto se
+      <strong>anula</strong>, lo que deja constancia del motivo sin eliminar el asiento
+      original, y luego se registra una consulta nueva con los datos correctos.
+    </span>
+  </div>
+</div>
+
+@if (error(); as mensaje) {
+  <div class="alerta alerta-error" role="alert">
+    <span>{{ mensaje }}</span>
+    <button type="button" class="btn btn-sm btn-secundario" (click)="cargarHistorias()">
+      Reintentar
+    </button>
+  </div>
+}
+
+<!-- ============================ Linea de tiempo ========================== -->
+@if (!pacienteId()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <strong>Elija un paciente</strong>
+      <p class="texto-suave">
+        Seleccione un paciente para ver el detalle de todas sus atenciones clinicas.
+      </p>
+    </div>
+  </div>
+} @else if (cargando()) {
+  <div class="card">
+    <div class="estado-vacio">
+      <span class="spinner spinner-grande"></span>
+      <p class="texto-suave">Cargando la historia clinica...</p>
+    </div>
+  </div>
+} @else {
+  <div class="card">
+    <div class="card-encabezado">
+      <h2>Consultas de {{ nombrePaciente() || 'el paciente' }}</h2>
+      <span class="texto-suave texto-pequeno">
+        De la mas reciente a la mas antigua ({{ consultas().length }})
+      </span>
+    </div>
+
+    <ol class="linea-tiempo">
+      @for (consulta of consultas(); track consulta.id) {
+        <li class="hito" [class.anulada]="consulta.anulada">
+          <span class="punto" aria-hidden="true"></span>
+
+          <article class="consulta">
+            <header class="consulta-cabecera">
+              <div class="consulta-titulo">
+                <button
+                  type="button"
+                  class="btn btn-fantasma btn-sm expandir"
+                  (click)="alternar(consulta.id)"
+                  [attr.aria-expanded]="estaExpandida(consulta.id)"
+                  [attr.aria-label]="
+                    estaExpandida(consulta.id) ? 'Contraer la consulta' : 'Expandir la consulta'
+                  "
+                >
+                  @if (estaExpandida(consulta.id)) {
+                    <span aria-hidden="true">&minus;</span>
+                  } @else {
+                    <span aria-hidden="true">+</span>
+                  }
+                </button>
+                <div>
+                  <span class="fecha mono">
+                    {{ fechaCorta(consulta.fecha) }} {{ horaCorta(consulta.fecha) }}
+                  </span>
+                  <span class="texto-suave texto-pequeno">
+                    &middot; {{ consulta.odontologoNombre }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="fila">
+                @if (consulta.anulada) {
+                  <span class="badge badge-peligro">Anulada</span>
+                } @else {
+                  <span class="badge badge-exito">Vigente</span>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-secundario"
+                    (click)="abrirAnular(consulta)"
+                  >
+                    Anular
+                  </button>
+                }
+              </div>
+            </header>
+
+            <dl class="lista-datos resumen">
+              <div>
+                <dt>Motivo de consulta</dt>
+                <dd>{{ consulta.motivoConsulta || '-' }}</dd>
+              </div>
+              <div>
+                <dt>Diagnostico</dt>
+                <dd>{{ consulta.diagnostico || '-' }}</dd>
+              </div>
+            </dl>
+
+            @if (consulta.anulada) {
+              <div class="alerta alerta-error motivo-anulacion">
+                <span>
+                  <strong>Motivo de la anulacion:</strong>
+                  {{ consulta.motivoAnulacion || 'No se indico un motivo' }}
+                </span>
+              </div>
+            }
+
+            @if (estaExpandida(consulta.id)) {
+              <dl class="lista-datos detalle">
+                <div>
+                  <dt>Anamnesis</dt>
+                  <dd>{{ consulta.anamnesis || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Examen clinico</dt>
+                  <dd>{{ consulta.examenClinico || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Procedimiento</dt>
+                  <dd>{{ consulta.procedimiento || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Tratamiento</dt>
+                  <dd>{{ consulta.tratamiento || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Medicamentos</dt>
+                  <dd>{{ consulta.medicamentos || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Observaciones</dt>
+                  <dd>{{ consulta.observaciones || '-' }}</dd>
+                </div>
+                <div>
+                  <dt>Cita asociada</dt>
+                  <dd>{{ consulta.citaId ? 'Cita N.° ' + consulta.citaId : 'Sin cita' }}</dd>
+                </div>
+              </dl>
+            }
+          </article>
+        </li>
+      } @empty {
+        <li class="sin-hitos">
+          <div class="estado-vacio">
+            <strong>Sin consultas registradas</strong>
+            <p class="texto-suave">
+              Este paciente todavia no tiene atenciones en su historia clinica.
+            </p>
+            <button type="button" class="btn btn-primario btn-sm" (click)="abrirFormulario()">
+              Registrar la primera consulta
+            </button>
+          </div>
+        </li>
+      }
+    </ol>
+  </div>
+}
+
+<!-- ======================= Formulario de la consulta ===================== -->
+@if (formAbierto()) {
+  <div class="modal-fondo" role="dialog" aria-modal="true" aria-labelledby="titulo-consulta">
+    <div class="modal">
+      <h2 id="titulo-consulta">Registrar consulta</h2>
+      <p class="texto-suave texto-pequeno">
+        El registro queda como un asiento nuevo e inalterable de la historia clinica.
+      </p>
+
+      @if (errorFormulario(); as mensaje) {
+        <div class="alerta alerta-error" role="alert">{{ mensaje }}</div>
+      }
+
+      <form [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="hc-paciente">Paciente <span class="requerido">*</span></label>
+            <select
+              id="hc-paciente"
+              formControlName="pacienteId"
+              (change)="cargarCitasDelPaciente()"
+            >
+              <option value="">Seleccione un paciente</option>
+              @for (paciente of pacientes(); track paciente.id) {
+                <option [value]="paciente.id">
+                  {{ paciente.nombreCompleto }} - {{ paciente.dni }}
+                </option>
+              }
+            </select>
+            @if (formulario.controls.pacienteId.touched && formulario.controls.pacienteId.invalid) {
+              <span class="form-error">Elija un paciente.</span>
+            }
+          </div>
+
+          <div class="form-campo">
+            <label for="hc-odontologo">Odontologo <span class="requerido">*</span></label>
+            <select id="hc-odontologo" formControlName="odontologoId">
+              <option value="">Seleccione un odontologo</option>
+              @for (odontologo of odontologos(); track odontologo.id) {
+                <option [value]="odontologo.id">{{ odontologo.nombreCompleto }}</option>
+              }
+            </select>
+            @if (
+              formulario.controls.odontologoId.touched && formulario.controls.odontologoId.invalid
+            ) {
+              <span class="form-error">Elija un odontologo.</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-campo">
+          <label for="hc-cita">Cita asociada</label>
+          <select id="hc-cita" formControlName="citaId">
+            <option value="">Sin cita asociada</option>
+            @for (cita of citasDelPaciente(); track cita.id) {
+              <option [value]="cita.id">{{ etiquetaCita(cita) }}</option>
+            }
+          </select>
+          <span class="form-ayuda">
+            Es opcional. Solo se listan las citas del paciente elegido: una cita de otro paciente
+            es rechazada por el servidor.
+          </span>
+        </div>
+
+        <div class="form-campo">
+          <label for="hc-motivo">Motivo de consulta <span class="requerido">*</span></label>
+          <textarea id="hc-motivo" formControlName="motivoConsulta"></textarea>
+          @if (
+            formulario.controls.motivoConsulta.touched && formulario.controls.motivoConsulta.invalid
+          ) {
+            <span class="form-error">El motivo de consulta es obligatorio.</span>
+          }
+        </div>
+
+        <div class="form-campo">
+          <label for="hc-diagnostico">Diagnostico <span class="requerido">*</span></label>
+          <textarea id="hc-diagnostico" formControlName="diagnostico"></textarea>
+          @if (
+            formulario.controls.diagnostico.touched && formulario.controls.diagnostico.invalid
+          ) {
+            <span class="form-error">El diagnostico es obligatorio.</span>
+          }
+        </div>
+
+        <div class="grid-2">
+          <div class="form-campo">
+            <label for="hc-anamnesis">Anamnesis</label>
+            <textarea id="hc-anamnesis" formControlName="anamnesis"></textarea>
+          </div>
+          <div class="form-campo">
+            <label for="hc-examen">Examen clinico</label>
+            <textarea id="hc-examen" formControlName="examenClinico"></textarea>
+          </div>
+          <div class="form-campo">
+            <label for="hc-procedimiento">Procedimiento</label>
+            <textarea id="hc-procedimiento" formControlName="procedimiento"></textarea>
+          </div>
+          <div class="form-campo">
+            <label for="hc-tratamiento">Tratamiento</label>
+            <textarea id="hc-tratamiento" formControlName="tratamiento"></textarea>
+          </div>
+          <div class="form-campo">
+            <label for="hc-medicamentos">Medicamentos</label>
+            <textarea id="hc-medicamentos" formControlName="medicamentos"></textarea>
+          </div>
+          <div class="form-campo">
+            <label for="hc-observaciones">Observaciones</label>
+            <textarea id="hc-observaciones" formControlName="observaciones"></textarea>
+          </div>
+        </div>
+
+        <div class="form-acciones">
+          <button
+            type="button"
+            class="btn btn-secundario"
+            (click)="cerrarFormulario()"
+            [disabled]="guardando()"
+          >
+            Cerrar
+          </button>
+          <button type="submit" class="btn btn-primario" [disabled]="guardando()">
+            @if (guardando()) {
+              <span class="spinner"></span>
+              <span>Guardando...</span>
+            } @else {
+              <span>Registrar consulta</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- =========================== Panel de anulacion ======================== -->
+@if (historiaAAnular(); as consulta) {
+  <div class="modal-fondo" role="dialog" aria-modal="true" aria-labelledby="titulo-anular">
+    <div class="modal modal-sm">
+      <h2 id="titulo-anular">Anular consulta</h2>
+      <p class="texto-pequeno texto-suave">
+        Consulta del {{ fechaCorta(consulta.fecha) }} atendida por
+        {{ consulta.odontologoNombre }}.
+      </p>
+
+      <div class="alerta alerta-advertencia">
+        La consulta no se elimina: queda marcada como anulada y sigue visible en el historial
+        junto con el motivo que indique.
+      </div>
+
+      <form [formGroup]="formAnular" (ngSubmit)="confirmarAnular()" novalidate>
+        <div class="form-campo">
+          <label for="an-motivo">Motivo de la anulacion <span class="requerido">*</span></label>
+          <textarea id="an-motivo" formControlName="motivo"></textarea>
+          @if (formAnular.controls.motivo.touched && formAnular.controls.motivo.invalid) {
+            <span class="form-error">Indique el motivo (minimo 5 caracteres).</span>
+          }
+        </div>
+
+        <div class="form-acciones">
+          <button
+            type="button"
+            class="btn btn-secundario"
+            (click)="cerrarAnular()"
+            [disabled]="anulando()"
+          >
+            Volver
+          </button>
+          <button type="submit" class="btn btn-peligro" [disabled]="anulando()">
+            @if (anulando()) {
+              <span class="spinner"></span>
+              <span>Anulando...</span>
+            } @else {
+              <span>Anular consulta</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
