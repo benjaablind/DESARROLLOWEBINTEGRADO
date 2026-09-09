@@ -13,34 +13,41 @@ Se expone únicamente lo estudiado en las **semanas 1 a 4**: fundamentos de Spri
 
 ## 1. Antes de la sustentación (hacerlo hoy, no mañana)
 
-### 1.1. Dos cosas bloqueantes
+### 1.1. Estado de la entrega
 
-**a) El repositorio debe ser público.** Hoy `https://github.com/benjaablind/DESARROLLOWEBINTEGRADO` responde 404 a quien no tenga acceso, así que el profesor no podría abrirlo.
+Estas dos condiciones ya están cumplidas; conviene volver a comprobarlas la mañana de la sustentación:
 
-> En GitHub: **Settings → General → Danger Zone → Change repository visibility → Make public**.
+- **El repositorio es público.** Abrir `https://github.com/benjaablind/DESARROLLOWEBINTEGRADO` en una ventana de incógnito, sin sesión iniciada, y confirmar que carga.
+- **`main` tiene el proyecto completo.** Los seis módulos entraron por Pull Request, uno por integrante. En la raíz de `main` deben verse `ProyectoFinal/backend` y `ProyectoFinal/frontend`, y en `controller/` los once controladores.
 
-Después, comprobarlo desde una ventana de incógnito o pidiéndole a alguien ajeno al grupo que abra el enlace.
+### 1.2. Java y Maven: comprobarlo antes, no en el aula
 
-**b) El código debe estar en la rama `main`.** Hoy el backend completo está solo en `feature/proyecto-completo`; `main` tiene únicamente el frontend. Quien abra el repositorio verá `main` por defecto y no encontrará la API.
+El proyecto usa **Java 25**, declarado en el `pom.xml`. Con un JDK anterior la compilación falla con `release version 25 not supported`, y ese error delante del profesor cuesta caro.
 
 ```bash
-git checkout main
-git merge feature/proyecto-completo    # avance directo, sin conflictos
-git push origin main
+java -version    # debe decir 25
 ```
 
-Alternativa recomendada, porque deja constancia del trabajo en equipo: abrir un **Pull Request** de `feature/proyecto-completo` hacia `main`, que otro integrante lo revise y aprobarlo. El profesor ve el flujo de trabajo, no solo el resultado.
+Si dice 24 o menos, hay dos salidas:
 
-### 1.2. Preparación de la máquina que va a proyectar
+- **Recomendada:** instalar el **JDK 25** (Eclipse Temurin o el de Oracle) en la máquina que va a proyectar. Es lo que dice el material del curso y deja los comandos limpios.
+- **Rápida, para hoy:** añadir `-Djava.version=24` a cada comando, ajustando el número al JDK que tengan.
+
+**Maven no hace falta instalarlo.** El proyecto trae el wrapper: `mvnw` en Git Bash y `mvnw.cmd` en PowerShell o CMD. Si escriben `mvn` a secas y no lo tienen instalado, sale «El término 'mvn' no se reconoce».
+
+| Terminal | Arrancar el backend | Ejecutar las pruebas |
+|---|---|---|
+| PowerShell, con JDK 25 | `.\mvnw.cmd spring-boot:run` | `.\mvnw.cmd test` |
+| PowerShell, con JDK 24 | `.\mvnw.cmd "-Djava.version=24" spring-boot:run` | `.\mvnw.cmd "-Djava.version=24" test` |
+| Git Bash, con JDK 25 | `./mvnw spring-boot:run` | `./mvnw test` |
+
+En PowerShell **las comillas alrededor de `-Djava.version=24` son obligatorias**: sin ellas, PowerShell parte el argumento y Maven responde `Unknown lifecycle phase ".version=24"`.
+
+### 1.3. Preparación de la máquina que va a proyectar
 
 1. Clonar el repositorio limpio en una carpeta nueva y verificar que arranca. Si funciona recién clonado, funciona en cualquier equipo.
-2. Levantar el backend y dejarlo corriendo:
-   ```bash
-   cd ProyectoFinal/backend
-   mvn spring-boot:run
-   ```
-   Queda en `http://localhost:8080/api` con los datos de demostración cargados.
-3. Ejecutar `mvn test` una vez, para que Maven deje las dependencias en caché y la demostración no dependa de la red del aula.
+2. Levantar el backend y dejarlo corriendo, desde `ProyectoFinal/backend` y con el comando que corresponda a su terminal según la tabla de arriba. Queda en `http://localhost:8080/api` con los datos de demostración cargados.
+3. Ejecutar las pruebas una vez, para que Maven deje las dependencias en caché y la demostración no dependa de la red del aula.
 4. Importar la colección de Postman (sección 2).
 5. Abrir en el editor, en pestañas y en este orden, los archivos que se van a mostrar:
    - `pom.xml`
@@ -52,7 +59,7 @@ Alternativa recomendada, porque deja constancia del trabajo en equipo: abrir un 
 6. Aumentar el tamaño de letra del editor y de la terminal para que se lea desde el fondo del aula.
 7. Tener una segunda máquina lista con todo lo anterior, por si la primera falla.
 
-### 1.3. Qué llevar preparado
+### 1.4. Qué llevar preparado
 
 - El enlace del repositorio escrito, listo para pegar en el Classroom.
 - Postman con la colección importada y probada **antes** de entrar al aula.
@@ -94,9 +101,11 @@ Clic derecho sobre la colección → **Run collection** → **Run**. Postman eje
 
 Las carpetas están pensadas para eso: cada una crea sus datos, prueba el caso correcto, prueba el caso de error y limpia lo que creó, así que la colección se puede ejecutar cuantas veces haga falta.
 
-### 2.5. La única solicitud que necesita un paso manual
+### 2.5. La solicitud de subida de archivo
 
-**«Subir un archivo clínico»**, en la carpeta 6, envía `multipart/form-data` en lugar de JSON. Antes de enviarla hay que ir a **Body → form-data**, en la fila `archivo` pulsar **Select Files** y elegir una imagen o un PDF del equipo. Conviene dejar preparada una radiografía de ejemplo en el escritorio.
+**«Subir un archivo clínico»**, en la carpeta 6, es la única que envía `multipart/form-data` en lugar de JSON. Ya viene apuntando a `radiografia-ejemplo.png`, que está en la carpeta `postman/` del repositorio, así que normalmente funciona sin tocar nada.
+
+Si Postman avisa que no encuentra el archivo, hay dos salidas: ir a **Body → form-data**, fila `archivo`, pulsar **Select Files** y elegirlo a mano; o dejarlo resuelto de una vez en **Settings → General → Working directory**, apuntando a `ProyectoFinal/postman`. Conviene comprobarlo antes de entrar al aula.
 
 ---
 
@@ -108,7 +117,7 @@ Duración objetivo: **20 a 25 minutos**. Cada integrante muestra su propio módu
 
 **Qué muestra:**
 
-1. La terminal con `mvn spring-boot:run` y el mensaje de arranque en el puerto 8080. Primera frase: «esto es una API REST hecha con Spring Boot, y ya está corriendo».
+1. La terminal con el backend arrancando (`.\mvnw.cmd spring-boot:run`) y el mensaje de inicio en el puerto 8080. Primera frase: «esto es una API REST hecha con Spring Boot, y ya está corriendo».
 2. En Postman, `POST /auth/login` con `admin` / `admin123` → **200** con el usuario autenticado. Luego el mismo login con una clave incorrecta → **400** con la estructura de error.
 3. El `pom.xml`: las cuatro dependencias y **el comentario de alcance** que dice que JPA, la base de datos y Spring Security entran en las semanas 6 a 10.
 4. El árbol de paquetes: `controller`, `service`, `repository`, `model`, `dto`, `exception`, `config`.
@@ -191,7 +200,7 @@ Es el turno que más valora la rúbrica del curso, porque el TDD fue el tema de 
 3. `GET /reportes/ingresos?desde=&hasta=` → ingresos por método de pago y por mes.
 4. `GET /reportes/citas` con las fechas invertidas → **400**.
 5. **Run collection**: las 65 solicitudes en verde, en menos de un minuto.
-6. En la terminal, `mvn test`: **156 pruebas, 0 fallos, 0 errores**.
+6. En la terminal, las pruebas (`.\mvnw.cmd test`): **156 pruebas, 0 fallos, 0 errores**.
 
 **Cierre, tres frases:**
 
@@ -259,7 +268,7 @@ Decir «eso corresponde a la unidad siguiente y así lo dejamos preparado» demu
 | El proyector o la máquina principal | Segunda laptop con todo instalado y probado |
 | El backend no arranca en el aula | Tenerlo ya arrancado desde antes de entrar y **no cerrar la terminal** |
 | Postman pide iniciar sesión | Usar Thunder Client en VS Code, o los comandos `curl` de `backend/DOCUMENTACION_API.md` |
-| No hay internet | Todo es local: backend en `localhost:8080` y Postman de escritorio. Haber ejecutado `mvn test` antes deja las dependencias en caché |
+| No hay internet | Todo es local: backend en `localhost:8080` y Postman de escritorio. Haber ejecutado las pruebas antes deja las dependencias en caché |
 | Una solicitud devuelve algo inesperado | Reiniciar el backend: recarga los datos de demostración y deja el sistema en su estado inicial |
 
 **Lo que debe quedar demostrado al terminar:**

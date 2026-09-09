@@ -14,7 +14,7 @@ Aplicación web de tres capas: API REST con Spring Boot, frontend con Angular y,
 Para levantarlo en dos terminales:
 
 ```bash
-cd ProyectoFinal/backend && mvn spring-boot:run   # API en http://localhost:8080/api
+cd ProyectoFinal/backend && ./mvnw spring-boot:run   # API en http://localhost:8080/api
 cd ProyectoFinal/frontend && npm install && npm start   # UI en http://localhost:4200
 ```
 
