@@ -13,3 +13,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# Postman en modo local: configuracion de la maquina de cada uno,
+# no del proyecto. La coleccion versionada es el .json de esa carpeta.
+.postman/
+ProyectoFinal/postman/postman/
