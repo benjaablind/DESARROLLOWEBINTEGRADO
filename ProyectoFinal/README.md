@@ -72,7 +72,7 @@ La documentación completa de los endpoints está en [backend/DOCUMENTACION_API.
 
 Para probar la API sin escribir una sola línea, importa la colección de [postman/](postman/): 65 solicitudes organizadas por módulo, con el caso correcto y el caso de error de cada regla de negocio.
 
-El reparto de la sustentación, el orden de la demostración y las respuestas a las preguntas más probables están en [GUIA_SUSTENTACION.md](GUIA_SUSTENTACION.md).
+El reparto de la sustentación, el orden de la demostración y las respuestas a las preguntas más probables están en [GUIA_SUSTENTACION.md](GUIA_SUSTENTACION.md), y en [GUIA_SUSTENTACION.docx](GUIA_SUSTENTACION.docx) para repartirla al equipo.
 
 ## Cómo ejecutar
 
