@@ -1,0 +1,150 @@
+:host {
+  display: block;
+}
+
+/* ---------------------------- Linea de tiempo ---------------------------- */
+
+.linea-tiempo {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--e-6);
+}
+
+.linea-tiempo::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 9px;
+  width: 2px;
+  background: var(--c-borde);
+}
+
+.hito {
+  position: relative;
+  margin-bottom: var(--e-4);
+}
+
+.hito:last-child {
+  margin-bottom: 0;
+}
+
+.punto {
+  position: absolute;
+  top: 14px;
+  left: calc(var(--e-6) * -1 + 3px);
+  width: 14px;
+  height: 14px;
+  border: 3px solid var(--c-superficie);
+  border-radius: 50%;
+  background: var(--c-primario);
+  box-shadow: 0 0 0 1px var(--c-primario-200);
+}
+
+.hito.anulada .punto {
+  background: var(--c-peligro);
+  box-shadow: 0 0 0 1px var(--c-peligro);
+}
+
+.sin-hitos {
+  list-style: none;
+}
+
+/* ------------------------------- Consulta -------------------------------- */
+
+.consulta {
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-md);
+  background: var(--c-superficie);
+  padding: var(--e-3) var(--e-4);
+  box-shadow: var(--s-1);
+}
+
+.hito.anulada .consulta {
+  border-color: var(--c-peligro);
+  border-style: dashed;
+  background: var(--c-superficie-2);
+  opacity: 0.78;
+}
+
+.hito.anulada .consulta .fecha {
+  text-decoration: line-through;
+}
+
+.consulta-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-2);
+  margin-bottom: var(--e-3);
+}
+
+.consulta-titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+  min-width: 0;
+}
+
+.expandir {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--c-borde-fuerte);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.fecha {
+  font-weight: 600;
+}
+
+.resumen {
+  margin-bottom: 0;
+}
+
+.detalle {
+  margin-top: var(--e-3);
+  padding-top: var(--e-3);
+  border-top: 1px dashed var(--c-borde);
+}
+
+.motivo-anulacion {
+  margin: var(--e-3) 0 0;
+}
+
+.lista-datos dd {
+  white-space: pre-line;
+}
+
+/* -------------------------------- Modales -------------------------------- */
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--e-5) var(--e-3);
+  background: rgba(10, 25, 28, 0.55);
+  overflow-y: auto;
+}
+
+.modal {
+  width: 100%;
+  max-width: 720px;
+  padding: var(--e-5);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-lg);
+  background: var(--c-superficie);
+  box-shadow: var(--s-4);
+}
+
+.modal-sm {
+  max-width: 460px;
+}
