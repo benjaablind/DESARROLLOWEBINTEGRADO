@@ -4,9 +4,10 @@
 
 ## Cómo usarla
 
-1. Levantar el backend desde `ProyectoFinal/backend`:
+1. Levantar el backend desde `ProyectoFinal/backend` con el wrapper incluido:
    ```bash
-   mvn spring-boot:run
+   ./mvnw spring-boot:run      # Git Bash
+   .\mvnw.cmd spring-boot:run  # PowerShell
    ```
    Queda en `http://localhost:8080/api` y carga los datos de demostración al arrancar.
 2. En Postman: **Import** → seleccionar `Sistema_Odontologico.postman_collection.json`.
