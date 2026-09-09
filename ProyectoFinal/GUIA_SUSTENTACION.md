@@ -111,7 +111,28 @@ Si Postman avisa que no encuentra el archivo, hay dos salidas: ir a **Body → f
 
 ## 3. Guion de la sustentación en vivo
 
-Duración objetivo: **20 a 25 minutos**. Cada integrante muestra su propio módulo y explica el tema del curso que le corresponde.
+Duración objetivo: **20 a 25 minutos**. Cada integrante muestra su propio módulo y explica el tema del curso que le corresponde. Así, cada persona responde por el código que escribió y, entre los seis, quedan cubiertos los cuatro temas de las semanas 1 a 4.
+
+| Turno | Integrante | Módulo | Tema que explica | Semana | Min |
+|---|---|---|---|---|---|
+| 1 | Integrante 1 | Usuarios, roles y autenticación | Fundamentos de Spring Boot, entorno y arquitectura por capas | 1 | 4 |
+| 2 | Integrante 2 | Pacientes | Endpoints, controladores e inyección de dependencias | 2 | 4 |
+| 3 | Integrante 3 | Citas, agenda y dashboard | Verbos HTTP, parámetros y `ResponseEntity` | 4 | 3 |
+| 4 | Integrante 4 | Historia clínica y odontograma | Validación de datos y manejo de errores | 4 | 3 |
+| 5 | Integrante 5 | Tratamientos y pagos | Desarrollo guiado por pruebas (TDD) | 3 | 4 |
+| 6 | Integrante 6 | Archivos clínicos y reportes | Pruebas de la API con Postman y ejecución de la suite | 4 | 4 |
+| — | Todos | — | Cierre y preguntas | — | 3 |
+
+Antes de ensayar, cada integrante debe anotar su nombre junto a su número y leer **solo su turno** en detalle, además de las secciones 4, 5 y 6, que son comunes.
+
+| Número | Nombre y apellidos |
+|---|---|
+| Integrante 1 | |
+| Integrante 2 | |
+| Integrante 3 | |
+| Integrante 4 | |
+| Integrante 5 | |
+| Integrante 6 | |
 
 ### Apertura — Integrante 1 (4 min): la aplicación corriendo y de qué está hecha
 
