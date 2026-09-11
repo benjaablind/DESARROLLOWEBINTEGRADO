@@ -106,6 +106,9 @@ export class HistoriasComponent {
     return this.pacientes().find((p) => p.id === id)?.nombreCompleto ?? '';
   });
 
+  /** Fecha y hora en que se genera la vista de impresion. Se calcula una sola vez. */
+  protected readonly impresoEl = (() => new Date().toLocaleString('es-PE'))();
+
   /* --------------------------------- Carga -------------------------------- */
 
   private cargarCatalogos(): void {
@@ -174,6 +177,18 @@ export class HistoriasComponent {
 
   protected contraerTodas(): void {
     this.expandidas.set([]);
+  }
+
+  /* -------------------------------- Impresion ------------------------------ */
+
+  /**
+   * Prepara e imprime la historia clinica del paciente seleccionado.
+   * Se expanden todas las consultas para que el detalle completo quede en el
+   * papel, no solo el resumen visible en pantalla.
+   */
+  protected imprimir(): void {
+    this.expandirTodas();
+    setTimeout(() => window.print(), 100);
   }
 
   /* ------------------------------ Formulario ------------------------------ */

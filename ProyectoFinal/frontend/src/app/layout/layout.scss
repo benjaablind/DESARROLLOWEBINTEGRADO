@@ -278,3 +278,32 @@ svg {
     display: none;
   }
 }
+
+/* --------------------------------- Impresion ------------------------------ */
+/*
+ * Al imprimir cualquier pantalla del sistema, la barra lateral y la barra
+ * superior no aportan nada al papel: solo el contenido de la pagina interesa.
+ * Cada pagina decide, con su propio CSS, que parte de su contenido mostrar
+ * en la version impresa (ver .solo-impresion en historias.scss).
+ */
+@media print {
+  .barra-lateral,
+  .velo,
+  .barra-superior {
+    display: none !important;
+  }
+
+  .area-principal {
+    margin: 0;
+    width: 100%;
+  }
+
+  .contenido {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .cascaron {
+    min-height: 0;
+  }
+}

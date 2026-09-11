@@ -148,3 +148,63 @@
 .modal-sm {
   max-width: 460px;
 }
+
+/* --------------------------------- Impresion ------------------------------ */
+
+.solo-impresion {
+  display: none;
+}
+
+@media print {
+  .solo-impresion {
+    display: block;
+    margin-bottom: var(--e-4);
+  }
+
+  .solo-impresion h1 {
+    margin: 0 0 var(--e-1);
+    font-size: 1.25rem;
+  }
+
+  .solo-impresion p {
+    margin: 0;
+    color: var(--c-texto-suave);
+    font-size: 0.85rem;
+  }
+
+  /* En papel solo interesa el contenido clinico: se ocultan los controles. */
+  .card-compacta,
+  .titulo-pagina .acciones-titulo,
+  .card-encabezado,
+  .modal-fondo,
+  .btn {
+    display: none !important;
+  }
+
+  .card {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+
+  .linea-tiempo {
+    padding-left: 0;
+  }
+
+  .linea-tiempo::before,
+  .punto {
+    display: none;
+  }
+
+  .consulta {
+    border: 1px solid #000;
+    box-shadow: none;
+    page-break-inside: avoid;
+    margin-bottom: var(--e-3);
+  }
+
+  .hito.anulada .consulta {
+    border-style: dashed;
+    opacity: 1;
+  }
+}

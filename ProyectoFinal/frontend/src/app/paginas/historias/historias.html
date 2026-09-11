@@ -4,14 +4,25 @@
     <span class="subtitulo">Atenciones registradas por paciente</span>
   </div>
 
-  <button
-    type="button"
-    class="btn btn-primario"
-    (click)="abrirFormulario()"
-    [disabled]="pacientes().length === 0"
-  >
-    Registrar consulta
-  </button>
+  <div class="fila acciones-titulo">
+    <button
+      type="button"
+      class="btn btn-secundario"
+      (click)="imprimir()"
+      [disabled]="!pacienteId() || historias().length === 0"
+    >
+      Imprimir historia clinica
+    </button>
+
+    <button
+      type="button"
+      class="btn btn-primario"
+      (click)="abrirFormulario()"
+      [disabled]="pacientes().length === 0"
+    >
+      Registrar consulta
+    </button>
+  </div>
 </div>
 
 <!-- ========================= Seleccion del paciente ====================== -->
@@ -84,6 +95,11 @@
   </div>
 } @else {
   <div class="card">
+    <div class="solo-impresion encabezado-impresion">
+      <h1>Historia clinica - {{ nombrePaciente() }}</h1>
+      <p>Impreso el {{ impresoEl }}</p>
+    </div>
+
     <div class="card-encabezado">
       <h2>Consultas de {{ nombrePaciente() || 'el paciente' }}</h2>
       <span class="texto-suave texto-pequeno">
