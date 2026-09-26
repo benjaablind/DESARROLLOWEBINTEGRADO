@@ -1,0 +1,160 @@
+{
+  "info": {
+    "name": "Laboratorio 07 - JPQL y Transacciones",
+    "description": "Consultas JPQL y operaciones de inventario de la Guia de Laboratorio 07. Marco Antonio Gonzales del Valle Vargas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/productos"
+    }
+  ],
+  "item": [
+    {
+      "name": "13.1 JPQL - buscar por nombre parcial",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/buscar?texto=lap",
+          "host": ["{{baseUrl}}"],
+          "path": ["buscar"],
+          "query": [{ "key": "texto", "value": "lap" }]
+        },
+        "description": "200 OK. Devuelve la Laptop Lenovo ThinkPad. LIKE sin distinguir mayusculas."
+      }
+    },
+    {
+      "name": "13.2 Consulta derivada - por categoria",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/categoria/tecnologia",
+          "host": ["{{baseUrl}}"],
+          "path": ["categoria", "tecnologia"]
+        },
+        "description": "200 OK. findByCategoriaIgnoreCase: funciona en minusculas o mayusculas."
+      }
+    },
+    {
+      "name": "13.3 JPQL - rango de precio",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/precio?min=300&max=1500",
+          "host": ["{{baseUrl}}"],
+          "path": ["precio"],
+          "query": [
+            { "key": "min", "value": "300" },
+            { "key": "max", "value": "1500" }
+          ]
+        },
+        "description": "200 OK. Productos entre 300 y 1500, ordenados de menor a mayor precio."
+      }
+    },
+    {
+      "name": "13.3b Prueba negativa - rango invertido",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/precio?min=2000&max=100",
+          "host": ["{{baseUrl}}"],
+          "path": ["precio"],
+          "query": [
+            { "key": "min", "value": "2000" },
+            { "key": "max", "value": "100" }
+          ]
+        },
+        "description": "400 Bad Request: la regla de negocio rechaza el rango invertido."
+      }
+    },
+    {
+      "name": "Actividad 1 - stock bajo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/stock-bajo?limite=5",
+          "host": ["{{baseUrl}}"],
+          "path": ["stock-bajo"],
+          "query": [{ "key": "limite", "value": "5" }]
+        },
+        "description": "200 OK. JPQL buscarConStockBajo(): productos con stock <= limite."
+      }
+    },
+    {
+      "name": "Actividad 2 - texto de busqueda vacio",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/buscar?texto=   ",
+          "host": ["{{baseUrl}}"],
+          "path": ["buscar"],
+          "query": [{ "key": "texto", "value": "   " }]
+        },
+        "description": "400 Bad Request: el texto no puede estar vacio ni ser solo espacios."
+      }
+    },
+    {
+      "name": "14. Transaccion con commit - registrar salida",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/1/salidas?cantidad=2",
+          "host": ["{{baseUrl}}"],
+          "path": ["1", "salidas"],
+          "query": [{ "key": "cantidad", "value": "2" }]
+        },
+        "description": "200 OK. Descuenta 2 del stock y registra un movimiento SALIDA en la misma transaccion."
+      }
+    },
+    {
+      "name": "15. Transaccion con rollback - error simulado",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/1/salidas/simular-error?cantidad=1",
+          "host": ["{{baseUrl}}"],
+          "path": ["1", "salidas", "simular-error"],
+          "query": [{ "key": "cantidad", "value": "1" }]
+        },
+        "description": "500. Tras la llamada, el stock y los movimientos quedan como estaban: rollback completo."
+      }
+    },
+    {
+      "name": "Actividad 3 - registrar entrada",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/1/entradas?cantidad=5",
+          "host": ["{{baseUrl}}"],
+          "path": ["1", "entradas"],
+          "query": [{ "key": "cantidad", "value": "5" }]
+        },
+        "description": "200 OK. Incrementa el stock y registra un movimiento ENTRADA."
+      }
+    },
+    {
+      "name": "Actividad 4 - salida con stock insuficiente",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/1/salidas?cantidad=99",
+          "host": ["{{baseUrl}}"],
+          "path": ["1", "salidas"],
+          "query": [{ "key": "cantidad", "value": "99" }]
+        },
+        "description": "400 Bad Request: ReglaNegocioException, el inventario no se toca."
+      }
+    }
+  ]
+}

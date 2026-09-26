@@ -74,6 +74,8 @@ Para probar la API sin escribir una sola línea, importa la colección de [postm
 
 El reparto de la sustentación, el orden de la demostración y las respuestas a las preguntas más probables están en [GUIA_SUSTENTACION.md](GUIA_SUSTENTACION.md).
 
+El flujo detallado de cada integrante —su commit, su código, su prueba y sus solicitudes de Postman— está en [FLUJO_POR_INTEGRANTE.md](FLUJO_POR_INTEGRANTE.md).
+
 ## Cómo ejecutar
 
 Necesitas **Java 25** y Node 20 o superior. Maven no hace falta instalarlo: el proyecto trae el wrapper, `mvnw` en Git Bash y `mvnw.cmd` en PowerShell o CMD.
