@@ -1,5 +1,14 @@
 package com.utp.odontologia.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -8,16 +17,37 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * Usuario del sistema (Integrante 1).
  * La contrasena nunca se serializa en las respuestas JSON.
  */
+@Entity
+@Table(name = "usuarios")
 public class Usuario {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 80)
     private String nombres;
+
+    @Column(nullable = false, length = 80)
     private String apellidos;
+
+    @Column(unique = true, length = 120)
     private String email;
+
+    @Column(nullable = false, unique = true, length = 30)
     private String usuario;
+
+    @Column(nullable = false, length = 100)
     private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private Rol rol;
+
+    @Column(nullable = false)
     private boolean activo = true;
+
+    @Column(name = "fecha_registro", nullable = false)
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 
     public Usuario() {

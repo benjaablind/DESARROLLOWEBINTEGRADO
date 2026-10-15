@@ -1,18 +1,21 @@
 package com.utp.odontologia.dto;
 
 /**
- * Resultado de un inicio de sesion correcto (Integrante 1).
+ * Respuesta del inicio de sesion (semana 9).
  *
- * Todavia no incluye token: mientras no exista JWT (semanas 6 a 10) el frontend
- * guarda el usuario devuelto y envia su id en las llamadas siguientes.
+ * Hasta la semana 5 solo devolvia los datos del usuario y el servidor no
+ * recordaba nada. Ahora incluye el JWT: el cliente lo envia en cada peticion
+ * como "Authorization: Bearer <accessToken>" hasta que venza.
+ *
+ * Nunca incluye la contrasena ni su hash.
  */
 public record LoginResponse(
-        boolean autenticado,
-        UsuarioResponse usuario,
-        String mensaje) {
+        String tokenType,
+        String accessToken,
+        long expiresInSeconds,
+        UsuarioResponse usuario) {
 
-    /** Atajo para construir la respuesta de una autenticacion exitosa. */
-    public static LoginResponse exitoso(UsuarioResponse usuario) {
-        return new LoginResponse(true, usuario, "Autenticacion correcta");
+    public static LoginResponse bearer(String token, long expiresInSeconds, UsuarioResponse usuario) {
+        return new LoginResponse("Bearer", token, expiresInSeconds, usuario);
     }
 }

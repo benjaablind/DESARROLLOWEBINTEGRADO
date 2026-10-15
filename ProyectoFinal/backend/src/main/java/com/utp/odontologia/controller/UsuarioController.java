@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -83,7 +84,11 @@ public class UsuarioController {
         return ResponseEntity.ok(UsuarioResponse.desde(usuarioService.actualizar(id, request)));
     }
 
-    /** PATCH /api/usuarios/{id}/password : requiere la contrasena actual. */
+    /**
+     * PATCH /api/usuarios/{id}/password : requiere la contrasena actual.
+     * Lo puede hacer el propio usuario o un administrador; cualquier otro, 403.
+     */
+    @PreAuthorize("hasRole('ADMINISTRADOR') or @usuarioActual.es(#id)")
     @PatchMapping("/{id}/password")
     public ResponseEntity<UsuarioResponse> cambiarPassword(@PathVariable Long id,
             @Valid @RequestBody CambiarPasswordRequest request) {
@@ -110,7 +115,11 @@ public class UsuarioController {
         return ResponseEntity.noContent().build();
     }
 
-    /** GET /api/usuarios/{id}/permisos : permisos que corresponden al rol del usuario. */
+    /**
+     * GET /api/usuarios/{id}/permisos : permisos que corresponden al rol del usuario.
+     * Cada usuario puede consultar los suyos; el administrador, los de cualquiera.
+     */
+    @PreAuthorize("hasRole('ADMINISTRADOR') or @usuarioActual.es(#id)")
     @GetMapping("/{id}/permisos")
     public ResponseEntity<PermisosResponse> permisos(@PathVariable Long id) {
         Usuario usuario = usuarioService.buscarPorId(id);
