@@ -1,5 +1,7 @@
 # Flujo de la exposición, integrante por integrante
 
+> **Esta guía es del Avance 1 (semanas 1 a 4)** y se conserva como registro de esa entrega. Para el Avance 2 (semanas 6 a 10: base de datos, JPQL, transacciones, seguridad y JWT) ver [GUIA_AVANCE_2.md](GUIA_AVANCE_2.md).
+
 Cada uno expone **su módulo** siguiendo siempre los mismos cuatro pasos:
 
 ```

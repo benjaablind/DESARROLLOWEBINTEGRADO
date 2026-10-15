@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.OdontogramaHistorialResponse;
 import com.utp.odontologia.dto.OdontogramaPiezaResponse;
@@ -30,6 +31,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  * no ofrece actualizar(...) ni eliminar(...).
  */
 @Service
+@Transactional
 public class OdontogramaService {
 
     /**
@@ -60,6 +62,7 @@ public class OdontogramaService {
      *
      * @throws RecursoNoEncontradoException si el paciente no existe
      */
+    @Transactional(readOnly = true)
     public OdontogramaResponse obtenerActual(Long pacienteId) {
         Paciente paciente = obtenerPaciente(pacienteId);
         List<RegistroPieza> registros = odontogramaRepository.listarPorPaciente(pacienteId);
@@ -85,6 +88,7 @@ public class OdontogramaService {
      * @throws RecursoNoEncontradoException si el paciente no existe
      * @throws ReglaNegocioException        si el numero de pieza no es FDI
      */
+    @Transactional(readOnly = true)
     public OdontogramaHistorialResponse historialDePieza(Long pacienteId, int numeroPieza) {
         obtenerPaciente(pacienteId);
         validarNumeroPieza(numeroPieza);
@@ -124,6 +128,7 @@ public class OdontogramaService {
      * Cuenta cuantas piezas hay en cada estado segun el odontograma actual.
      * Solo aparecen los estados que tienen al menos una pieza.
      */
+    @Transactional(readOnly = true)
     public Map<EstadoPieza, Long> resumenEstados(Long pacienteId) {
         Map<EstadoPieza, Long> resumen = new EnumMap<>(EstadoPieza.class);
 

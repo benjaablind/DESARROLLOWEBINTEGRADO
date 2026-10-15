@@ -2,56 +2,52 @@ package com.utp.odontologia.repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.utp.odontologia.model.Cita;
 import com.utp.odontologia.model.EstadoCita;
 
 /** Repositorio de citas (Integrante 3). */
-@Repository
-public class CitaRepository extends RepositorioEnMemoria<Cita> {
+public interface CitaRepository extends RepositorioBase<Cita> {
 
-    @Override
-    protected Long obtenerId(Cita entidad) {
-        return entidad.getId();
-    }
-
-    @Override
-    protected void asignarId(Cita entidad, Long id) {
-        entidad.setId(id);
-    }
+    List<Cita> findByEstadoOrderById(EstadoCita estado);
 
     /** Citas ordenadas cronologicamente. */
-    public List<Cita> listarPorFecha() {
-        return listar().stream()
-                .sorted(Comparator.comparing(Cita::getFechaHora))
-                .toList();
-    }
+    @Query("SELECT c FROM Cita c ORDER BY c.fechaHora, c.id")
+    List<Cita> listarPorFecha();
 
-    public List<Cita> listarPorPaciente(Long pacienteId) {
-        return listarSi(c -> pacienteId.equals(c.getPacienteId()));
-    }
+    @Query("SELECT c FROM Cita c WHERE c.pacienteId = :pacienteId ORDER BY c.id")
+    List<Cita> listarPorPaciente(@Param("pacienteId") Long pacienteId);
 
-    public List<Cita> listarPorOdontologo(Long odontologoId) {
-        return listarSi(c -> odontologoId.equals(c.getOdontologoId()));
-    }
+    @Query("SELECT c FROM Cita c WHERE c.odontologoId = :odontologoId ORDER BY c.id")
+    List<Cita> listarPorOdontologo(@Param("odontologoId") Long odontologoId);
 
-    public List<Cita> listarPorEstado(EstadoCita estado) {
-        return listarSi(c -> c.getEstado() == estado);
-    }
-
-    public List<Cita> listarPorDia(LocalDate dia) {
-        return listarSi(c -> c.getFechaHora().toLocalDate().equals(dia));
-    }
+    @Query("""
+            SELECT c
+            FROM Cita c
+            WHERE c.fechaHora >= :inicio AND c.fechaHora < :fin
+            ORDER BY c.id
+            """)
+    List<Cita> iniciadasEntre(@Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime finExclusivo);
 
     /** Citas cuyo inicio cae dentro del rango, inclusive en ambos extremos. */
-    public List<Cita> listarEntre(LocalDateTime desde, LocalDateTime hasta) {
-        return listar().stream()
-                .filter(c -> !c.getFechaHora().isBefore(desde) && !c.getFechaHora().isAfter(hasta))
-                .sorted(Comparator.comparing(Cita::getFechaHora))
-                .toList();
+    @Query("""
+            SELECT c
+            FROM Cita c
+            WHERE c.fechaHora BETWEEN :desde AND :hasta
+            ORDER BY c.fechaHora, c.id
+            """)
+    List<Cita> listarEntre(@Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    default List<Cita> listarPorEstado(EstadoCita estado) {
+        return findByEstadoOrderById(estado);
+    }
+
+    default List<Cita> listarPorDia(LocalDate dia) {
+        return iniciadasEntre(dia.atStartOfDay(), dia.plusDays(1).atStartOfDay());
     }
 }

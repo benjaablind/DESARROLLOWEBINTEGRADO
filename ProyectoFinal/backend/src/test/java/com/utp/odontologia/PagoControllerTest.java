@@ -7,15 +7,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.utp.odontologia.model.EstadoTratamiento;
@@ -34,10 +36,16 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class PagoControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private PagoRepository pagoRepository;
@@ -60,11 +68,7 @@ class PagoControllerTest {
 
     @BeforeEach
     void prepararDatos() {
-        pagoRepository.limpiar();
-        tratamientoRepository.limpiar();
-        pacienteRepository.limpiar();
-        usuarioRepository.limpiar();
-
+        baseDeDatos.limpiar();
         pacienteUnoId = pacienteRepository.guardar(paciente("70111222", "Ana", "Torres")).getId();
         pacienteDosId = pacienteRepository.guardar(paciente("70333444", "Luis", "Rojas")).getId();
 
@@ -287,7 +291,7 @@ class PagoControllerTest {
         tratamiento.setOdontologoId(odontologoId);
         tratamiento.setNombre(nombre);
         tratamiento.setDescripcion("Tratamiento de prueba");
-        tratamiento.setPrecio(precio);
+        tratamiento.setPrecio(BigDecimal.valueOf(precio));
         tratamiento.setEstado(estado);
         return tratamiento;
     }

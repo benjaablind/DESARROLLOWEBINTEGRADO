@@ -24,14 +24,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.utp.odontologia.dto.ArchivoActualizarRequest;
 import com.utp.odontologia.model.Archivo;
 import com.utp.odontologia.model.Paciente;
@@ -51,6 +52,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "lramos", roles = "ADMINISTRADOR")
 class ArchivoControllerTest {
 
     /** Debe coincidir con app.archivos.directorio de application.properties. */
@@ -58,6 +60,11 @@ class ArchivoControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private ArchivoRepository archivoRepository;
@@ -76,11 +83,8 @@ class ArchivoControllerTest {
 
     @BeforeEach
     void prepararDatos() {
+        baseDeDatos.limpiar();
         // Obligatorio: los repositorios en memoria son singletons compartidos.
-        archivoRepository.limpiar();
-        pacienteRepository.limpiar();
-        usuarioRepository.limpiar();
-
         Paciente paciente = new Paciente();
         paciente.setDni("70123456");
         paciente.setNombres("Juan");
@@ -101,7 +105,6 @@ class ArchivoControllerTest {
                 // La prueba no debe fallar por un archivo temporal que no se pudo borrar.
             }
         }
-        archivoRepository.limpiar();
     }
 
     @AfterAll

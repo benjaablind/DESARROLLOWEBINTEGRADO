@@ -2,9 +2,12 @@ package com.utp.odontologia.exception;
 
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -91,6 +94,40 @@ public class ApiExceptionHandler {
             HttpServletRequest request) {
         return construir(HttpStatus.BAD_REQUEST,
                 "El archivo supera el tamano maximo permitido", request);
+    }
+
+    /**
+     * 409: la base de datos rechazo la operacion por integridad referencial o
+     * por un valor unico repetido. El caso tipico es eliminar un paciente que
+     * todavia tiene citas, tratamientos o pagos: con la persistencia en memoria
+     * se borraba y quedaban registros huerfanos; las claves foraneas lo impiden.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> conflictoDeIntegridad(DataIntegrityViolationException ex,
+            HttpServletRequest request) {
+        return construir(HttpStatus.CONFLICT,
+                "La operacion no se puede completar porque el registro esta relacionado con otros datos",
+                request);
+    }
+
+    /**
+     * 403 en el login: la contrasena es correcta pero el usuario fue dado de
+     * baja. Solo se informa despues de validar la clave (ver SecurityConfig).
+     */
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorResponse> usuarioInactivo(DisabledException ex,
+            HttpServletRequest request) {
+        return construir(HttpStatus.FORBIDDEN, "El usuario esta inactivo", request);
+    }
+
+    /**
+     * 401 en el login: usuario inexistente o contrasena incorrecta. El mismo
+     * mensaje para ambos casos, para no revelar que nombres de usuario existen.
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> credencialesInvalidas(AuthenticationException ex,
+            HttpServletRequest request) {
+        return construir(HttpStatus.UNAUTHORIZED, "Usuario o contrasena incorrectos", request);
     }
 
     private ResponseEntity<ErrorResponse> construir(HttpStatus estado, String mensaje,

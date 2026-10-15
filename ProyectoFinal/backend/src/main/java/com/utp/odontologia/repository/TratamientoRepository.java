@@ -1,44 +1,62 @@
 package com.utp.odontologia.repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.utp.odontologia.model.EstadoTratamiento;
 import com.utp.odontologia.model.Tratamiento;
 
 /** Repositorio de tratamientos (Integrante 5). */
-@Repository
-public class TratamientoRepository extends RepositorioEnMemoria<Tratamiento> {
+public interface TratamientoRepository extends RepositorioBase<Tratamiento> {
 
-    @Override
-    protected Long obtenerId(Tratamiento entidad) {
-        return entidad.getId();
-    }
+    List<Tratamiento> findByEstadoOrderById(EstadoTratamiento estado);
 
-    @Override
-    protected void asignarId(Tratamiento entidad, Long id) {
-        entidad.setId(id);
-    }
+    /**
+     * Lee el tratamiento bloqueando su fila hasta el fin de la transaccion
+     * (SELECT ... FOR UPDATE). Lo usa el registro de pagos: si dos cobros al
+     * mismo tratamiento llegan a la vez, el segundo espera a que el primero
+     * confirme y recien entonces calcula el saldo, asi nunca se cobra de mas.
+     *
+     * Es SQL nativo y no JPQL con @Lock a proposito: con @Lock, Hibernate
+     * genera "FOR UPDATE OF t1_0" (sintaxis de MySQL 8), que el MariaDB de
+     * XAMPP no acepta. Un "FOR UPDATE" simple funciona igual en MySQL, MariaDB
+     * y H2. Es el caso en que SQL nativo se justifica: una caracteristica
+     * propia del motor (guia 07).
+     */
+    @Query(value = "SELECT * FROM tratamientos WHERE id = :id FOR UPDATE", nativeQuery = true)
+    Optional<Tratamiento> buscarParaActualizar(@Param("id") Long id);
 
-    public List<Tratamiento> listarPorPaciente(Long pacienteId) {
-        return listarSi(t -> pacienteId.equals(t.getPacienteId()));
-    }
+    @Query("SELECT t FROM Tratamiento t WHERE t.pacienteId = :pacienteId ORDER BY t.id")
+    List<Tratamiento> listarPorPaciente(@Param("pacienteId") Long pacienteId);
 
-    public List<Tratamiento> listarPorEstado(EstadoTratamiento estado) {
-        return listarSi(t -> t.getEstado() == estado);
+    @Query("SELECT t FROM Tratamiento t WHERE t.estado IN :estados ORDER BY t.id")
+    List<Tratamiento> listarPorEstados(@Param("estados") Collection<EstadoTratamiento> estados);
+
+    @Query("""
+            SELECT t
+            FROM Tratamiento t
+            WHERE t.estado = :estado AND t.fechaFin BETWEEN :desde AND :hasta
+            ORDER BY t.id
+            """)
+    List<Tratamiento> listarPorEstadoYFinEntre(@Param("estado") EstadoTratamiento estado,
+            @Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+
+    default List<Tratamiento> listarPorEstado(EstadoTratamiento estado) {
+        return findByEstadoOrderById(estado);
     }
 
     /** Tratamientos pendientes, aprobados o en proceso. */
-    public List<Tratamiento> listarActivos() {
-        return listarSi(Tratamiento::estaActivo);
+    default List<Tratamiento> listarActivos() {
+        return listarPorEstados(List.of(
+                EstadoTratamiento.PENDIENTE, EstadoTratamiento.APROBADO, EstadoTratamiento.EN_PROCESO));
     }
 
-    public List<Tratamiento> listarCompletadosEntre(LocalDate desde, LocalDate hasta) {
-        return listarSi(t -> t.getEstado() == EstadoTratamiento.COMPLETADO
-                && t.getFechaFin() != null
-                && !t.getFechaFin().isBefore(desde)
-                && !t.getFechaFin().isAfter(hasta));
+    default List<Tratamiento> listarCompletadosEntre(LocalDate desde, LocalDate hasta) {
+        return listarPorEstadoYFinEntre(EstadoTratamiento.COMPLETADO, desde, hasta);
     }
 }

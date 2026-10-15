@@ -3,42 +3,40 @@ package com.utp.odontologia.repository;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.stereotype.Repository;
-
 import com.utp.odontologia.model.Rol;
 import com.utp.odontologia.model.Usuario;
 
-/** Repositorio de usuarios (Integrante 1). */
-@Repository
-public class UsuarioRepository extends RepositorioEnMemoria<Usuario> {
+/**
+ * Repositorio de usuarios (Integrante 1).
+ *
+ * Usa consultas derivadas: Spring Data arma la consulta a partir del nombre
+ * del metodo (findByUsuarioIgnoreCase -> WHERE UPPER(usuario) = UPPER(?)).
+ */
+public interface UsuarioRepository extends RepositorioBase<Usuario> {
 
-    @Override
-    protected Long obtenerId(Usuario entidad) {
-        return entidad.getId();
+    Optional<Usuario> findByUsuarioIgnoreCase(String usuario);
+
+    Optional<Usuario> findByEmailIgnoreCase(String email);
+
+    List<Usuario> findByRolOrderById(Rol rol);
+
+    List<Usuario> findByActivoTrueOrderById();
+
+    // Con un parametro null, una consulta derivada buscaria "IS NULL"; aqui
+    // null significa "sin criterio", asi que no se consulta.
+    default Optional<Usuario> buscarPorUsuario(String usuario) {
+        return usuario == null ? Optional.empty() : findByUsuarioIgnoreCase(usuario);
     }
 
-    @Override
-    protected void asignarId(Usuario entidad, Long id) {
-        entidad.setId(id);
+    default Optional<Usuario> buscarPorEmail(String email) {
+        return email == null ? Optional.empty() : findByEmailIgnoreCase(email);
     }
 
-    public Optional<Usuario> buscarPorUsuario(String usuario) {
-        return listar().stream()
-                .filter(u -> u.getUsuario().equalsIgnoreCase(usuario))
-                .findFirst();
+    default List<Usuario> listarPorRol(Rol rol) {
+        return findByRolOrderById(rol);
     }
 
-    public Optional<Usuario> buscarPorEmail(String email) {
-        return listar().stream()
-                .filter(u -> u.getEmail() != null && u.getEmail().equalsIgnoreCase(email))
-                .findFirst();
-    }
-
-    public List<Usuario> listarPorRol(Rol rol) {
-        return listarSi(u -> u.getRol() == rol);
-    }
-
-    public List<Usuario> listarActivos() {
-        return listarSi(Usuario::isActivo);
+    default List<Usuario> listarActivos() {
+        return findByActivoTrueOrderById();
     }
 }

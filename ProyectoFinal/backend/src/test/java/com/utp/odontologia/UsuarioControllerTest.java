@@ -17,12 +17,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.utp.odontologia.dto.ActualizarUsuarioRequest;
 import com.utp.odontologia.dto.CambiarPasswordRequest;
 import com.utp.odontologia.dto.LoginRequest;
@@ -39,10 +41,16 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class UsuarioControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private UsuarioRepository usuarioRepository;
@@ -50,23 +58,27 @@ class UsuarioControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /** Los usuarios del escenario se guardan como en produccion: con hash BCrypt. */
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private Long idAdmin;
     private Long idOdontologo;
     private Long idInactivo;
 
     @BeforeEach
     void prepararDatos() {
-        // Obligatorio: el repositorio en memoria es un singleton compartido.
-        usuarioRepository.limpiar();
-
+        baseDeDatos.limpiar();
         idAdmin = usuarioRepository.guardar(new Usuario(null, "Ana", "Torres",
-                "ana@clinica.com", "admin", "admin123", Rol.ADMINISTRADOR)).getId();
+                "ana@clinica.com", "admin", passwordEncoder.encode("admin123"),
+                Rol.ADMINISTRADOR)).getId();
 
         idOdontologo = usuarioRepository.guardar(new Usuario(null, "Luis", "Ramos",
-                "luis@clinica.com", "lramos", "clave123", Rol.ODONTOLOGO)).getId();
+                "luis@clinica.com", "lramos", passwordEncoder.encode("clave123"),
+                Rol.ODONTOLOGO)).getId();
 
         Usuario inactivo = new Usuario(null, "Rosa", "Diaz",
-                "rosa@clinica.com", "rdiaz", "clave456", Rol.RECEPCIONISTA);
+                "rosa@clinica.com", "rdiaz", passwordEncoder.encode("clave456"), Rol.RECEPCIONISTA);
         inactivo.setActivo(false);
         idInactivo = usuarioRepository.guardar(inactivo).getId();
     }
@@ -225,7 +237,7 @@ class UsuarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.autenticado").value(true));
+                .andExpect(jsonPath("$.accessToken").isNotEmpty());
     }
 
     @Test
@@ -294,7 +306,7 @@ class UsuarioControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login autentica con credenciales correctas")
+    @DisplayName("POST /api/auth/login autentica y devuelve un JWT")
     void loginCorrecto() throws Exception {
         LoginRequest login = new LoginRequest("admin", "admin123");
 
@@ -302,21 +314,23 @@ class UsuarioControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.autenticado").value(true))
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.expiresInSeconds").isNumber())
                 .andExpect(jsonPath("$.usuario.usuario").value("admin"))
                 .andExpect(jsonPath("$.usuario.rol").value("ADMINISTRADOR"))
                 .andExpect(jsonPath("$.usuario.password").doesNotExist());
     }
 
     @Test
-    @DisplayName("POST /api/auth/login devuelve 400 con credenciales incorrectas")
-    void loginConCredencialesMalasDevuelve400() throws Exception {
+    @DisplayName("POST /api/auth/login devuelve 401 con credenciales incorrectas")
+    void loginConCredencialesMalasDevuelve401() throws Exception {
         LoginRequest login = new LoginRequest("admin", "claveEquivocada");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value("Usuario o contrasena incorrectos"));
 
         LoginRequest inexistente = new LoginRequest("noexiste", "admin123");
@@ -324,26 +338,26 @@ class UsuarioControllerTest {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(inexistente)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.mensaje").value("Usuario o contrasena incorrectos"));
     }
 
     @Test
-    @DisplayName("POST /api/auth/login devuelve 400 si el usuario esta inactivo")
-    void loginDeUsuarioInactivoDevuelve400() throws Exception {
+    @DisplayName("POST /api/auth/login devuelve 403 si el usuario esta inactivo")
+    void loginDeUsuarioInactivoDevuelve403() throws Exception {
         LoginRequest login = new LoginRequest("rdiaz", "clave456");
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.mensaje").value("El usuario esta inactivo"));
     }
 
     @Test
-    @DisplayName("GET /api/auth/perfil devuelve el perfil del usuario indicado")
+    @DisplayName("GET /api/auth/perfil devuelve el perfil del usuario del token")
     void perfilDevuelveUsuario() throws Exception {
-        mockMvc.perform(get("/api/auth/perfil").param("usuarioId", String.valueOf(idAdmin)))
+        mockMvc.perform(get("/api/auth/perfil"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario").value("admin"))
                 .andExpect(jsonPath("$.password").doesNotExist());

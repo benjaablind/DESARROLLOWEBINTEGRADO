@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.utp.odontologia.dto.ArchivoActualizarRequest;
@@ -50,6 +51,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  *   la API publica se mantienen igual.
  */
 @Service
+@Transactional
 public class ArchivoService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ArchivoService.class);
@@ -83,6 +85,7 @@ public class ArchivoService {
      * @param pacienteId id del paciente; puede ser null
      * @param tipo       tipo de documento; puede ser null
      */
+    @Transactional(readOnly = true)
     public List<Archivo> listar(Long pacienteId, TipoArchivo tipo) {
         return archivoRepository.listarSi(archivo -> {
             boolean coincidePaciente = pacienteId == null
@@ -93,12 +96,14 @@ public class ArchivoService {
     }
 
     /** Archivos de un paciente, del mas reciente al mas antiguo. Falla con 404 si no existe. */
+    @Transactional(readOnly = true)
     public List<Archivo> listarPorPaciente(Long pacienteId) {
         validarPaciente(pacienteId);
         return archivoRepository.listarPorPaciente(pacienteId);
     }
 
     /** Busca los metadatos de un archivo o falla con 404. */
+    @Transactional(readOnly = true)
     public Archivo buscarPorId(Long id) {
         return archivoRepository.buscarPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("archivo", id));
@@ -160,6 +165,7 @@ public class ArchivoService {
      * Entrega el contenido del archivo para descargarlo.
      * Falla con 404 si los metadatos existen pero el binario ya no esta en disco.
      */
+    @Transactional(readOnly = true)
     public Resource descargar(Long id) {
         Archivo archivo = buscarPorId(id);
         Path ruta = Paths.get(archivo.getUbicacion());
@@ -210,6 +216,7 @@ public class ArchivoService {
     }
 
     /** Convierte la entidad en su DTO de salida resolviendo los nombres relacionados. */
+    @Transactional(readOnly = true)
     public ArchivoResponse aResponse(Archivo archivo) {
         String pacienteNombre = pacienteRepository.buscarPorId(archivo.getPacienteId())
                 .map(Paciente::getNombreCompleto)
@@ -221,6 +228,7 @@ public class ArchivoService {
     }
 
     /** Convierte una lista completa de entidades a DTOs de salida. */
+    @Transactional(readOnly = true)
     public List<ArchivoResponse> aResponses(List<Archivo> archivos) {
         return archivos.stream().map(this::aResponse).toList();
     }

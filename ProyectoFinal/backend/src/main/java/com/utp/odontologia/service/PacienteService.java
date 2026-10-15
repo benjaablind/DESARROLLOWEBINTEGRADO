@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.AntecedentesRequest;
 import com.utp.odontologia.dto.PacienteRequest;
@@ -20,6 +21,7 @@ import com.utp.odontologia.repository.PacienteRepository;
  * El controlador solo traduce HTTP: toda la validacion de negocio vive aqui.
  */
 @Service
+@Transactional
 public class PacienteService {
 
     private final PacienteRepository pacienteRepository;
@@ -34,6 +36,7 @@ public class PacienteService {
      * @param texto  coincidencia parcial en nombre completo o DNI; puede ser null
      * @param estado estado exacto del paciente; puede ser null
      */
+    @Transactional(readOnly = true)
     public List<Paciente> listar(String texto, EstadoPaciente estado) {
         String buscado = texto == null ? "" : texto.trim().toLowerCase(Locale.ROOT);
 
@@ -48,12 +51,14 @@ public class PacienteService {
     }
 
     /** Busca un paciente por id o falla con 404. */
+    @Transactional(readOnly = true)
     public Paciente buscarPorId(Long id) {
         return pacienteRepository.buscarPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("paciente", id));
     }
 
     /** Busca un paciente por DNI o falla con 404. */
+    @Transactional(readOnly = true)
     public Paciente buscarPorDni(String dni) {
         return pacienteRepository.buscarPorDni(dni)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -103,6 +108,7 @@ public class PacienteService {
     }
 
     /** Total de pacientes registrados. Lo usa el tablero de indicadores. */
+    @Transactional(readOnly = true)
     public long contar() {
         return pacienteRepository.contar();
     }

@@ -1,11 +1,14 @@
 package com.utp.odontologia.config;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import com.utp.odontologia.model.Antecedentes;
@@ -34,13 +37,13 @@ import com.utp.odontologia.repository.UsuarioRepository;
 /**
  * Carga datos de demostracion al arrancar la aplicacion.
  *
- * Mientras la persistencia sea en memoria, sin estos datos la aplicacion
- * arrancaria vacia en cada reinicio y el frontend no tendria nada que mostrar.
- * Cuando se incorpore PostgreSQL esta clase se reemplaza por un script de
- * migracion o por data.sql.
+ * Desde la semana 6 los datos viven en MySQL y se conservan entre reinicios,
+ * asi que la carga solo ocurre la primera vez: si ya hay usuarios en la base,
+ * no se toca nada. Sirve para tener una clinica de ejemplo con la que probar
+ * la API desde Postman sin registrar todo a mano.
  *
- * Las pruebas limpian los repositorios que usan, asi que estos datos no
- * interfieren con ellas.
+ * Las pruebas vacian la base antes de cada caso (LimpiadorBaseDatos), asi que
+ * estos datos no interfieren con ellas.
  */
 @Component
 public class DatosIniciales implements CommandLineRunner {
@@ -52,11 +55,12 @@ public class DatosIniciales implements CommandLineRunner {
     private final OdontogramaRepository odontograma;
     private final TratamientoRepository tratamientos;
     private final PagoRepository pagos;
+    private final PasswordEncoder passwordEncoder;
 
     public DatosIniciales(UsuarioRepository usuarios, PacienteRepository pacientes,
             CitaRepository citas, HistoriaClinicaRepository historias,
             OdontogramaRepository odontograma, TratamientoRepository tratamientos,
-            PagoRepository pagos) {
+            PagoRepository pagos, PasswordEncoder passwordEncoder) {
         this.usuarios = usuarios;
         this.pacientes = pacientes;
         this.citas = citas;
@@ -64,6 +68,7 @@ public class DatosIniciales implements CommandLineRunner {
         this.odontograma = odontograma;
         this.tratamientos = tratamientos;
         this.pagos = pagos;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -73,8 +78,9 @@ public class DatosIniciales implements CommandLineRunner {
         }
 
         // --- Usuarios (Integrante 1) ---
-        // La contrasena va en texto plano a proposito: el cifrado con BCrypt
-        // llega junto con Spring Security en las semanas 6 a 10.
+        // Credenciales de demostracion, conocidas a proposito para el laboratorio.
+        // En la base solo queda su hash BCrypt (ver crearUsuario). En un
+        // entorno real los usuarios iniciales se aprovisionan con secretos.
         Usuario admin = crearUsuario("Marco", "Gonzales del Valle", "admin@clinica.pe",
                 "admin", "admin123", Rol.ADMINISTRADOR);
         Usuario odontologo = crearUsuario("Lucia", "Ramos Vega", "lramos@clinica.pe",
@@ -239,7 +245,8 @@ public class DatosIniciales implements CommandLineRunner {
 
     private Usuario crearUsuario(String nombres, String apellidos, String email, String usuario,
             String password, Rol rol) {
-        Usuario u = new Usuario(null, nombres, apellidos, email, usuario, password, rol);
+        Usuario u = new Usuario(null, nombres, apellidos, email, usuario,
+                passwordEncoder.encode(password), rol);
         return usuarios.guardar(u);
     }
 
@@ -314,7 +321,7 @@ public class DatosIniciales implements CommandLineRunner {
         t.setOdontologoId(odontologo.getId());
         t.setNombre(nombre);
         t.setDescripcion(descripcion);
-        t.setPrecio(precio);
+        t.setPrecio(soles(precio));
         t.setEstado(estado);
         t.setFechaInicio(fechaInicio);
         t.setFechaFin(fechaFin);
@@ -338,9 +345,14 @@ public class DatosIniciales implements CommandLineRunner {
         Pago p = new Pago();
         p.setTratamientoId(tratamiento.getId());
         p.setPacienteId(tratamiento.getPacienteId());
-        p.setMonto(monto);
+        p.setMonto(soles(monto));
         p.setMetodo(metodo);
         p.setFecha(fecha);
         pagos.guardar(p);
+    }
+
+    /** Los importes del seed se escriben como literales; la entidad usa BigDecimal. */
+    private static BigDecimal soles(double importe) {
+        return BigDecimal.valueOf(importe).setScale(2, RoundingMode.HALF_UP);
     }
 }

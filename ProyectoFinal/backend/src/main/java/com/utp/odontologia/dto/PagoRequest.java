@@ -1,7 +1,10 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
+
 import com.utp.odontologia.model.MetodoPago;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
@@ -16,7 +19,8 @@ public record PagoRequest(
 
         @NotNull(message = "El monto es obligatorio")
         @Positive(message = "El monto debe ser mayor a cero")
-        Double monto,
+        @Digits(integer = 10, fraction = 2, message = "El monto admite hasta 2 decimales")
+        BigDecimal monto,
 
         @NotNull(message = "El metodo de pago es obligatorio")
         MetodoPago metodo,

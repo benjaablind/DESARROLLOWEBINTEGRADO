@@ -23,6 +23,7 @@ import com.utp.odontologia.dto.ArchivoActualizarRequest;
 import com.utp.odontologia.dto.ArchivoResponse;
 import com.utp.odontologia.model.Archivo;
 import com.utp.odontologia.model.TipoArchivo;
+import com.utp.odontologia.security.UsuarioActual;
 import com.utp.odontologia.service.ArchivoService;
 
 import jakarta.validation.Valid;
@@ -39,9 +40,11 @@ import jakarta.validation.Valid;
 public class ArchivoController {
 
     private final ArchivoService archivoService;
+    private final UsuarioActual usuarioActual;
 
-    public ArchivoController(ArchivoService archivoService) {
+    public ArchivoController(ArchivoService archivoService, UsuarioActual usuarioActual) {
         this.archivoService = archivoService;
+        this.usuarioActual = usuarioActual;
     }
 
     /** GET /api/archivos?pacienteId=&tipo= - listado con filtros opcionales. */
@@ -74,10 +77,13 @@ public class ArchivoController {
     public ResponseEntity<ArchivoResponse> subir(
             @RequestParam("archivo") MultipartFile archivo,
             @RequestParam("pacienteId") Long pacienteId,
-            @RequestParam(name = "usuarioId", required = false) Long usuarioId,
             @RequestParam("tipo") TipoArchivo tipo,
             @RequestParam(name = "descripcion", required = false) String descripcion,
             @RequestParam(name = "historiaClinicaId", required = false) Long historiaClinicaId) {
+
+        // Quien sube el archivo sale del token, no de un parametro que el
+        // cliente pudiera falsificar (hasta la semana 5 llegaba como usuarioId).
+        Long usuarioId = usuarioActual.id();
 
         Archivo guardado = archivoService.subir(archivo, pacienteId, usuarioId, tipo,
                 descripcion, historiaClinicaId);

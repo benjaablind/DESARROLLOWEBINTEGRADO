@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import com.utp.odontologia.model.EstadoTratamiento;
@@ -13,9 +14,9 @@ public record ReporteTratamientoItem(
         String pacienteNombre,
         String nombre,
         EstadoTratamiento estado,
-        double precio,
-        double totalPagado,
-        double saldoPendiente,
+        BigDecimal precio,
+        BigDecimal totalPagado,
+        BigDecimal saldoPendiente,
         LocalDate fechaInicio,
         LocalDate fechaFin) {
 }

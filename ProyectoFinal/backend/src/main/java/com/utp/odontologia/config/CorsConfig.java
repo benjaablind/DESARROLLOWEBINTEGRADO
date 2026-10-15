@@ -7,7 +7,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Permite que el frontend Angular (puerto 4200) consuma la API en desarrollo.
- * Cuando se incorpore Spring Security, esta configuracion se integrara alli.
+ * Desde la semana 8, SecurityConfig la aplica con http.cors(): asi las
+ * peticiones de verificacion previa (OPTIONS) del navegador se responden antes
+ * de exigir el token.
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {

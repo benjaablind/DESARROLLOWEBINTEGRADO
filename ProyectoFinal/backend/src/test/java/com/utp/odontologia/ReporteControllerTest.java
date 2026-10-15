@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -12,8 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.utp.odontologia.model.Archivo;
@@ -47,12 +49,18 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class ReporteControllerTest {
 
     private static final DateTimeFormatter CLAVE_MES = DateTimeFormatter.ofPattern("yyyy-MM");
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private PacienteRepository pacienteRepository;
@@ -81,15 +89,8 @@ class ReporteControllerTest {
 
     @BeforeEach
     void prepararEscenario() {
+        baseDeDatos.limpiar();
         // Obligatorio: los repositorios en memoria son singletons compartidos.
-        pacienteRepository.limpiar();
-        usuarioRepository.limpiar();
-        citaRepository.limpiar();
-        tratamientoRepository.limpiar();
-        pagoRepository.limpiar();
-        historiaClinicaRepository.limpiar();
-        archivoRepository.limpiar();
-
         LocalDate hoy = LocalDate.now();
 
         idOdontologo = usuarioRepository.guardar(new Usuario(null, "Luis", "Ramos",
@@ -295,7 +296,7 @@ class ReporteControllerTest {
         tratamiento.setPacienteId(pacienteId);
         tratamiento.setOdontologoId(idOdontologo);
         tratamiento.setNombre(nombre);
-        tratamiento.setPrecio(precio);
+        tratamiento.setPrecio(BigDecimal.valueOf(precio));
         tratamiento.setEstado(estado);
         tratamiento.setFechaInicio(inicio);
         tratamiento.setFechaFin(fin);
@@ -308,7 +309,7 @@ class ReporteControllerTest {
         Pago pago = new Pago();
         pago.setTratamientoId(tratamientoId);
         pago.setPacienteId(pacienteId);
-        pago.setMonto(monto);
+        pago.setMonto(BigDecimal.valueOf(monto));
         pago.setMetodo(metodo);
         pago.setFecha(LocalDateTime.now());
         pagoRepository.guardar(pago);

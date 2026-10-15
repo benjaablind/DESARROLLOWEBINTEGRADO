@@ -4,18 +4,19 @@ Repositorio del curso Desarrollo Web Integrado.
 
 ## Proyecto Final: Sistema de Gestión Odontológica
 
-Aplicación web de tres capas: API REST con Spring Boot, frontend con Angular y, en una etapa posterior, base de datos relacional. Está en [`ProyectoFinal/`](ProyectoFinal/).
+Aplicación web de tres capas: API REST con Spring Boot, base de datos MySQL con JPA y frontend con Angular. La API está protegida con Spring Security y JWT. Está en [`ProyectoFinal/`](ProyectoFinal/).
 
 - [Qué incluye y cómo ejecutarlo](ProyectoFinal/README.md)
 - [Documentación de la API](ProyectoFinal/backend/DOCUMENTACION_API.md)
 - [Colección de Postman](ProyectoFinal/postman/)
-- [Guía de sustentación](ProyectoFinal/GUIA_SUSTENTACION.md)
+- [Guía del Avance 2 (semanas 6 a 10)](ProyectoFinal/GUIA_AVANCE_2.md)
+- [Guía de sustentación del Avance 1](ProyectoFinal/GUIA_SUSTENTACION.md)
 
-Para levantarlo en dos terminales:
+Para levantar la API (requiere MySQL con la base creada por `backend/sql/01_crear_base_datos.sql`):
 
-```bash
-cd ProyectoFinal/backend && ./mvnw spring-boot:run   # API en http://localhost:8080/api
-cd ProyectoFinal/frontend && npm install && npm start   # UI en http://localhost:4200
+```powershell
+cd ProyectoFinal/backend
+.\iniciar.ps1      # pide la clave de MySQL y genera la del JWT; API en http://localhost:8080/api
 ```
 
 ## Estructura

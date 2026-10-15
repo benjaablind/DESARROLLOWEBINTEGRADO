@@ -1,10 +1,11 @@
 package com.utp.odontologia.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.EstadoCuentaResponse;
 import com.utp.odontologia.dto.PagoRequest;
@@ -24,12 +25,13 @@ import com.utp.odontologia.repository.TratamientoRepository;
  * Reglas de negocio del modulo de pagos (Integrante 5).
  * Un pago siempre se registra contra un tratamiento y nunca puede superar el
  * saldo pendiente de ese tratamiento.
+ *
+ * La frontera transaccional vive aqui (semana 7): las consultas se marcan
+ * readOnly y registrar() es una unidad de trabajo que bloquea el tratamiento.
  */
 @Service
+@Transactional
 public class PagoService {
-
-    /** Tolerancia para comparar importes en coma flotante (un centimo). */
-    private static final double TOLERANCIA = 0.001;
 
     private final PagoRepository pagoRepository;
     private final TratamientoRepository tratamientoRepository;
@@ -49,25 +51,22 @@ public class PagoService {
      * @param pacienteId     solo los pagos de ese paciente; puede ser null
      * @param tratamientoId  solo los pagos de ese tratamiento; puede ser null
      */
+    @Transactional(readOnly = true)
     public List<PagoResponse> listar(Long pacienteId, Long tratamientoId) {
-        List<Pago> encontrados = pagoRepository.listarSi(pago -> {
-            boolean coincidePaciente = pacienteId == null
-                    || pacienteId.equals(pago.getPacienteId());
-            boolean coincideTratamiento = tratamientoId == null
-                    || tratamientoId.equals(pago.getTratamientoId());
-            return coincidePaciente && coincideTratamiento;
-        });
-
-        return encontrados.stream().map(this::aRespuesta).toList();
+        return pagoRepository.filtrar(pacienteId, tratamientoId).stream()
+                .map(this::aRespuesta)
+                .toList();
     }
 
     /** Busca un pago por id o falla con 404. */
+    @Transactional(readOnly = true)
     public Pago buscarPorId(Long id) {
         return pagoRepository.buscarPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("pago", id));
     }
 
     /** Devuelve la vista de un pago, o falla con 404. */
+    @Transactional(readOnly = true)
     public PagoResponse detalle(Long id) {
         return aRespuesta(buscarPorId(id));
     }
@@ -75,28 +74,33 @@ public class PagoService {
     /**
      * Registra un pago contra un tratamiento.
      * El paciente se toma del tratamiento y el monto no puede exceder el saldo.
+     *
+     * Leer el saldo y guardar el pago son dos pasos: sin control, dos cobros
+     * simultaneos podrian leer el mismo saldo y pasar ambos la validacion. Por
+     * eso el tratamiento se lee con bloqueo de fila (buscarParaActualizar): el
+     * segundo cobro espera a que el primero confirme y ve el saldo ya reducido.
      */
     public PagoResponse registrar(PagoRequest request) {
-        Tratamiento tratamiento = buscarTratamiento(request.tratamientoId());
+        Tratamiento tratamiento = tratamientoRepository.buscarParaActualizar(request.tratamientoId())
+                .orElseThrow(() -> new RecursoNoEncontradoException("tratamiento", request.tratamientoId()));
 
         if (tratamiento.getEstado() == EstadoTratamiento.CANCELADO) {
             throw new ReglaNegocioException(
                     "No se puede registrar un pago de un tratamiento CANCELADO");
         }
 
-        double saldo = saldoDe(tratamiento);
-        double monto = request.monto();
+        BigDecimal saldo = saldoDe(tratamiento);
+        BigDecimal monto = Montos.redondear(request.monto());
 
-        if (monto - saldo > TOLERANCIA) {
+        if (monto.compareTo(saldo) > 0) {
             throw new ReglaNegocioException(
-                    "El monto excede el saldo pendiente del tratamiento: saldo actual S/ "
-                            + String.format(Locale.ROOT, "%.2f", saldo));
+                    "El monto excede el saldo pendiente del tratamiento: saldo actual S/ " + saldo);
         }
 
         Pago pago = new Pago();
         pago.setTratamientoId(tratamiento.getId());
         pago.setPacienteId(tratamiento.getPacienteId());
-        pago.setMonto(redondear(monto));
+        pago.setMonto(monto);
         pago.setMetodo(request.metodo());
         pago.setFecha(LocalDateTime.now());
         pago.setComprobante(request.comprobante());
@@ -112,6 +116,7 @@ public class PagoService {
     }
 
     /** Historial de pagos de un tratamiento, ordenado por fecha. */
+    @Transactional(readOnly = true)
     public List<PagoResponse> historialDeTratamiento(Long tratamientoId) {
         buscarTratamiento(tratamientoId);
         return pagoRepository.listarPorTratamiento(tratamientoId).stream()
@@ -123,6 +128,7 @@ public class PagoService {
      * Estado de cuenta del paciente: suma sus tratamientos no cancelados con lo
      * pagado y lo que aun debe.
      */
+    @Transactional(readOnly = true)
     public EstadoCuentaResponse estadoDeCuenta(Long pacienteId) {
         Paciente paciente = pacienteRepository.buscarPorId(pacienteId)
                 .orElseThrow(() -> new RecursoNoEncontradoException("paciente", pacienteId));
@@ -131,14 +137,14 @@ public class PagoService {
                 .filter(tratamiento -> tratamiento.getEstado() != EstadoTratamiento.CANCELADO)
                 .toList();
 
-        double totalTratamientos = 0;
-        double totalPagado = 0;
-        double saldoPendiente = 0;
+        BigDecimal totalTratamientos = Montos.CERO;
+        BigDecimal totalPagado = Montos.CERO;
+        BigDecimal saldoPendiente = Montos.CERO;
 
         for (Tratamiento tratamiento : vigentes) {
-            totalTratamientos += tratamiento.getPrecio();
-            totalPagado += pagoRepository.totalPagadoDeTratamiento(tratamiento.getId());
-            saldoPendiente += saldoDe(tratamiento);
+            totalTratamientos = Montos.sumar(totalTratamientos, tratamiento.getPrecio());
+            totalPagado = Montos.sumar(totalPagado, pagadoDe(tratamiento));
+            saldoPendiente = Montos.sumar(saldoPendiente, saldoDe(tratamiento));
         }
 
         List<TratamientoResponse> detalle = vigentes.stream()
@@ -148,9 +154,9 @@ public class PagoService {
         return new EstadoCuentaResponse(
                 paciente.getId(),
                 paciente.getNombreCompleto(),
-                redondear(totalTratamientos),
-                redondear(totalPagado),
-                redondear(saldoPendiente),
+                totalTratamientos,
+                totalPagado,
+                saldoPendiente,
                 detalle);
     }
 
@@ -159,10 +165,13 @@ public class PagoService {
                 .orElseThrow(() -> new RecursoNoEncontradoException("tratamiento", tratamientoId));
     }
 
+    private BigDecimal pagadoDe(Tratamiento tratamiento) {
+        return Montos.redondear(pagoRepository.totalPagadoDeTratamiento(tratamiento.getId()));
+    }
+
     /** Saldo del tratamiento: precio menos lo pagado, nunca negativo. */
-    private double saldoDe(Tratamiento tratamiento) {
-        double pagado = pagoRepository.totalPagadoDeTratamiento(tratamiento.getId());
-        return redondear(Math.max(0, tratamiento.getPrecio() - pagado));
+    private BigDecimal saldoDe(Tratamiento tratamiento) {
+        return Montos.saldo(tratamiento.getPrecio(), pagadoDe(tratamiento));
     }
 
     private PagoResponse aRespuesta(Pago pago) {
@@ -182,17 +191,11 @@ public class PagoService {
      * el detalle completo esta en GET /api/tratamientos/{id}.
      */
     private TratamientoResponse aRespuestaTratamiento(Tratamiento tratamiento) {
-        double pagado = redondear(pagoRepository.totalPagadoDeTratamiento(tratamiento.getId()));
         String nombrePaciente = pacienteRepository.buscarPorId(tratamiento.getPacienteId())
                 .map(Paciente::getNombreCompleto)
                 .orElse(null);
 
-        return TratamientoResponse.desde(tratamiento, nombrePaciente, null, pagado,
+        return TratamientoResponse.desde(tratamiento, nombrePaciente, null, pagadoDe(tratamiento),
                 saldoDe(tratamiento));
-    }
-
-    /** Redondeo monetario a 2 decimales, comun a todos los importes del modulo. */
-    private double redondear(double valor) {
-        return Math.round(valor * 100.0) / 100.0;
     }
 }

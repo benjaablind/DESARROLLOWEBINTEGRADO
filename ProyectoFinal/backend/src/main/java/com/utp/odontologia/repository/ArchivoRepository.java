@@ -1,40 +1,31 @@
 package com.utp.odontologia.repository;
 
-import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.utp.odontologia.model.Archivo;
 import com.utp.odontologia.model.TipoArchivo;
 
 /** Repositorio de metadatos de archivos clinicos (Integrante 6). */
-@Repository
-public class ArchivoRepository extends RepositorioEnMemoria<Archivo> {
+public interface ArchivoRepository extends RepositorioBase<Archivo> {
 
-    @Override
-    protected Long obtenerId(Archivo entidad) {
-        return entidad.getId();
-    }
-
-    @Override
-    protected void asignarId(Archivo entidad, Long id) {
-        entidad.setId(id);
-    }
+    List<Archivo> findByTipoOrderById(TipoArchivo tipo);
 
     /** Archivos de un paciente, del mas reciente al mas antiguo. */
-    public List<Archivo> listarPorPaciente(Long pacienteId) {
-        return listar().stream()
-                .filter(a -> pacienteId.equals(a.getPacienteId()))
-                .sorted(Comparator.comparing(Archivo::getFechaSubida).reversed())
-                .toList();
-    }
+    @Query("""
+            SELECT a
+            FROM Archivo a
+            WHERE a.pacienteId = :pacienteId
+            ORDER BY a.fechaSubida DESC, a.id DESC
+            """)
+    List<Archivo> listarPorPaciente(@Param("pacienteId") Long pacienteId);
 
-    public List<Archivo> listarPorTipo(TipoArchivo tipo) {
-        return listarSi(a -> a.getTipo() == tipo);
-    }
+    @Query("SELECT a FROM Archivo a WHERE a.historiaClinicaId = :historiaClinicaId ORDER BY a.id")
+    List<Archivo> listarPorHistoriaClinica(@Param("historiaClinicaId") Long historiaClinicaId);
 
-    public List<Archivo> listarPorHistoriaClinica(Long historiaClinicaId) {
-        return listarSi(a -> historiaClinicaId.equals(a.getHistoriaClinicaId()));
+    default List<Archivo> listarPorTipo(TipoArchivo tipo) {
+        return findByTipoOrderById(tipo);
     }
 }
