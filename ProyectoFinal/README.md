@@ -88,6 +88,14 @@ Necesitas **Java 25**, **MySQL 8** y Node 20 o superior. Maven no hace falta ins
 
 **1. Base de datos, una sola vez.** En MySQL Workbench ejecuta [backend/sql/01_crear_base_datos.sql](backend/sql/01_crear_base_datos.sql). Las tablas no se crean a mano: las genera Hibernate al arrancar.
 
+> **Con XAMPP.** XAMPP trae MariaDB 10.4, compatible con el driver de MySQL; la API se probó completa contra él (14 tablas, 21 claves foráneas, la colección de Postman sin fallas).
+>
+> 1. En el **XAMPP Control Panel**, pulsa **Start** en la fila *MySQL*.
+> 2. Crea la base desde la terminal: `C:\xampp\mysql\bin\mysql.exe -u root < backend\sql\01_crear_base_datos.sql`. O en phpMyAdmin (`http://localhost/phpmyadmin`, con Apache encendido), pestaña **SQL**, pega el script y pulsa **Continuar**.
+> 3. Al arrancar el backend, cuando pida la contraseña de MySQL, pulsa **Enter**: el `root` de XAMPP no tiene contraseña.
+>
+> Al iniciar aparece el aviso `HHH000511: The 5.5.5 version for [MySQLDialect] is no longer supported`. Es esperado: MariaDB se presenta como "5.5.5" ante el driver de MySQL. Las tablas, las claves foráneas y las consultas funcionan.
+
 **2. Backend**, desde `backend/`:
 
 ```powershell
