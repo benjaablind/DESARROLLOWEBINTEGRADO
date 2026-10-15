@@ -3,6 +3,7 @@ package com.utp.odontologia.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.HistoriaAnularRequest;
 import com.utp.odontologia.dto.HistoriaClinicaRequest;
@@ -28,6 +29,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  * evidencia clinica y borrarla dejaria el historial del paciente incompleto.
  */
 @Service
+@Transactional
 public class HistoriaClinicaService {
 
     private static final String RECURSO = "consulta de historia clinica";
@@ -54,6 +56,7 @@ public class HistoriaClinicaService {
      *
      * @throws RecursoNoEncontradoException si el paciente no existe
      */
+    @Transactional(readOnly = true)
     public List<HistoriaClinicaResponse> listarPorPaciente(Long pacienteId) {
         validarPacienteExiste(pacienteId);
 
@@ -67,6 +70,7 @@ public class HistoriaClinicaService {
      *
      * @throws RecursoNoEncontradoException si la consulta no existe
      */
+    @Transactional(readOnly = true)
     public HistoriaClinicaResponse buscarPorId(Long id) {
         return aRespuesta(obtenerEntidad(id));
     }

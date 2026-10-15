@@ -16,9 +16,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.utp.odontologia.model.Cita;
@@ -40,10 +41,16 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class HistoriaClinicaControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private HistoriaClinicaRepository historiaClinicaRepository;
@@ -67,11 +74,7 @@ class HistoriaClinicaControllerTest {
 
     @BeforeEach
     void prepararDatos() {
-        historiaClinicaRepository.limpiar();
-        pacienteRepository.limpiar();
-        usuarioRepository.limpiar();
-        citaRepository.limpiar();
-
+        baseDeDatos.limpiar();
         ana = pacienteRepository.guardar(nuevoPaciente("12345678", "Ana Maria", "Torres Vega"));
         luis = pacienteRepository.guardar(nuevoPaciente("87654321", "Luis Alberto", "Ramirez Soto"));
 
