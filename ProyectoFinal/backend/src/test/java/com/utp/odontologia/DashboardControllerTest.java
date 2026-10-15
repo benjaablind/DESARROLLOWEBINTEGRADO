@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -14,13 +15,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.utp.odontologia.model.Cita;
 import com.utp.odontologia.model.EstadoCita;
 import com.utp.odontologia.model.EstadoTratamiento;
+import com.utp.odontologia.model.MetodoPago;
 import com.utp.odontologia.model.Paciente;
 import com.utp.odontologia.model.Pago;
 import com.utp.odontologia.model.Rol;
@@ -38,10 +41,16 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class DashboardControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private PacienteRepository pacienteRepository;
@@ -65,12 +74,7 @@ class DashboardControllerTest {
 
     @BeforeEach
     void prepararEscenario() {
-        pacienteRepository.limpiar();
-        citaRepository.limpiar();
-        tratamientoRepository.limpiar();
-        pagoRepository.limpiar();
-        usuarioRepository.limpiar();
-
+        baseDeDatos.limpiar();
         LocalDate hoy = LocalDate.now();
         // Un dia del mes en curso distinto de hoy, para que los conteos no dependan
         // de la fecha en que se ejecuten las pruebas.
@@ -112,7 +116,7 @@ class DashboardControllerTest {
         tratamientoActivo.setPacienteId(paciente1.getId());
         tratamientoActivo.setOdontologoId(odontologo.getId());
         tratamientoActivo.setNombre("Ortodoncia");
-        tratamientoActivo.setPrecio(1000);
+        tratamientoActivo.setPrecio(BigDecimal.valueOf(1000));
         tratamientoActivo.setEstado(EstadoTratamiento.EN_PROCESO);
         tratamientoActivo = tratamientoRepository.guardar(tratamientoActivo);
 
@@ -120,7 +124,7 @@ class DashboardControllerTest {
         tratamientoCompletado.setPacienteId(paciente2.getId());
         tratamientoCompletado.setOdontologoId(odontologo.getId());
         tratamientoCompletado.setNombre("Profilaxis");
-        tratamientoCompletado.setPrecio(500);
+        tratamientoCompletado.setPrecio(BigDecimal.valueOf(500));
         tratamientoCompletado.setEstado(EstadoTratamiento.COMPLETADO);
         tratamientoCompletado.setFechaFin(hoy);
         tratamientoCompletado = tratamientoRepository.guardar(tratamientoCompletado);
@@ -147,7 +151,9 @@ class DashboardControllerTest {
         Pago pago = new Pago();
         pago.setTratamientoId(tratamientoId);
         pago.setPacienteId(pacienteId);
-        pago.setMonto(monto);
+        pago.setMonto(BigDecimal.valueOf(monto));
+        // La base exige el metodo de pago, igual que PagoRequest con @NotNull.
+        pago.setMetodo(MetodoPago.EFECTIVO);
         pago.setFecha(fecha);
         pagoRepository.guardar(pago);
     }
@@ -223,10 +229,7 @@ class DashboardControllerTest {
     @Test
     @DisplayName("GET /api/dashboard devuelve todo en cero cuando no hay datos")
     void devuelveCerosCuandoNoHayDatos() throws Exception {
-        pacienteRepository.limpiar();
-        citaRepository.limpiar();
-        tratamientoRepository.limpiar();
-        pagoRepository.limpiar();
+        baseDeDatos.limpiar();
 
         mockMvc.perform(get("/api/dashboard"))
                 .andExpect(status().isOk())
