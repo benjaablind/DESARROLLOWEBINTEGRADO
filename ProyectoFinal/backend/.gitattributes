@@ -1,0 +1,8 @@
+# Los scripts de shell deben tener finales de linea LF aunque se clonen en
+# Windows: con CRLF, bash falla con "$'\r': command not found".
+/mvnw text eol=lf
+*.sh text eol=lf
+
+# Los scripts de Windows, con CRLF.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
