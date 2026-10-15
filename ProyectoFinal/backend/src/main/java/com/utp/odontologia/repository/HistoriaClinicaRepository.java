@@ -1,43 +1,34 @@
 package com.utp.odontologia.repository;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.utp.odontologia.model.HistoriaClinica;
 
 /** Repositorio de consultas de historia clinica (Integrante 4). */
-@Repository
-public class HistoriaClinicaRepository extends RepositorioEnMemoria<HistoriaClinica> {
-
-    @Override
-    protected Long obtenerId(HistoriaClinica entidad) {
-        return entidad.getId();
-    }
-
-    @Override
-    protected void asignarId(HistoriaClinica entidad, Long id) {
-        entidad.setId(id);
-    }
+public interface HistoriaClinicaRepository extends RepositorioBase<HistoriaClinica> {
 
     /** Consultas de un paciente, de la mas reciente a la mas antigua. */
-    public List<HistoriaClinica> listarPorPaciente(Long pacienteId) {
-        return listar().stream()
-                .filter(h -> pacienteId.equals(h.getPacienteId()))
-                .sorted(Comparator.comparing(HistoriaClinica::getFecha).reversed())
-                .toList();
-    }
+    @Query("""
+            SELECT h
+            FROM HistoriaClinica h
+            WHERE h.pacienteId = :pacienteId
+            ORDER BY h.fecha DESC, h.id DESC
+            """)
+    List<HistoriaClinica> listarPorPaciente(@Param("pacienteId") Long pacienteId);
 
-    public List<HistoriaClinica> listarPorOdontologo(Long odontologoId) {
-        return listarSi(h -> odontologoId.equals(h.getOdontologoId()));
-    }
+    @Query("SELECT h FROM HistoriaClinica h WHERE h.odontologoId = :odontologoId ORDER BY h.id")
+    List<HistoriaClinica> listarPorOdontologo(@Param("odontologoId") Long odontologoId);
 
-    public List<HistoriaClinica> listarEntre(LocalDateTime desde, LocalDateTime hasta) {
-        return listar().stream()
-                .filter(h -> !h.getFecha().isBefore(desde) && !h.getFecha().isAfter(hasta))
-                .sorted(Comparator.comparing(HistoriaClinica::getFecha))
-                .toList();
-    }
+    @Query("""
+            SELECT h
+            FROM HistoriaClinica h
+            WHERE h.fecha BETWEEN :desde AND :hasta
+            ORDER BY h.fecha, h.id
+            """)
+    List<HistoriaClinica> listarEntre(@Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
 }
