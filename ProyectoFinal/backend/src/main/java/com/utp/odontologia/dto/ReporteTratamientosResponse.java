@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -13,7 +14,7 @@ public record ReporteTratamientosResponse(
         LocalDate hasta,
         long totalRealizados,
         long totalPendientes,
-        double montoRealizados,
-        double montoPendientes,
+        BigDecimal montoRealizados,
+        BigDecimal montoPendientes,
         List<ReporteTratamientoItem> tratamientos) {
 }

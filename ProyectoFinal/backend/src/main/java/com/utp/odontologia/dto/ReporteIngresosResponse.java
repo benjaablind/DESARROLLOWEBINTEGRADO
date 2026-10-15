@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -10,8 +11,8 @@ import java.util.Map;
 public record ReporteIngresosResponse(
         LocalDate desde,
         LocalDate hasta,
-        double totalIngresos,
+        BigDecimal totalIngresos,
         long cantidadPagos,
-        Map<String, Double> porMetodo,
-        Map<String, Double> porMes) {
+        Map<String, BigDecimal> porMetodo,
+        Map<String, BigDecimal> porMes) {
 }

@@ -2,9 +2,9 @@
 
 **URL base:** `http://localhost:8080/api`
 **Formato:** JSON, salvo la subida de archivos que usa `multipart/form-data`.
-**Encabezado:** `Content-Type: application/json` en POST, PUT y PATCH.
+**Encabezados:** `Content-Type: application/json` en POST, PUT y PATCH, y `Authorization: Bearer <token>` en todas las rutas salvo el login.
 
-Todos los errores devuelven la misma estructura:
+Todos los errores devuelven la misma estructura, incluidos los de seguridad:
 
 ```json
 {
@@ -15,22 +15,63 @@ Todos los errores devuelven la misma estructura:
 }
 ```
 
-Códigos usados: 200 en consultas y actualizaciones, 201 en creación con encabezado `Location`, 204 en borrado, 400 en datos inválidos o reglas de negocio incumplidas, 404 cuando el recurso no existe.
+| Código | Cuándo |
+|--------|--------|
+| 200 | Consultas y actualizaciones |
+| 201 | Creación, con encabezado `Location` |
+| 204 | Borrado |
+| 400 | Datos inválidos o regla de negocio incumplida |
+| 401 | Sin token, token alterado, vencido o de otro emisor; o credenciales incorrectas en el login |
+| 403 | El token es válido pero el rol no tiene permiso; o el usuario está inactivo |
+| 404 | El recurso no existe |
+| 409 | La base de datos rechaza la operación por integridad: por ejemplo, borrar un paciente que tiene citas |
 
 ## Autenticación — Integrante 1
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/auth/login` | Valida credenciales y devuelve el usuario |
-| POST | `/api/auth/logout` | Cierra sesión |
-| GET | `/api/auth/perfil?usuarioId=` | Datos del usuario indicado |
-
-Sin JWT todavía, el servidor no guarda sesión. El frontend conserva al usuario y envía su identificador cuando hace falta. La protección real llega con Spring Security.
+| POST | `/api/auth/login` | Valida credenciales y devuelve un JWT. Única ruta pública |
+| POST | `/api/auth/logout` | El cliente descarta su token |
+| GET | `/api/auth/perfil` | Datos del usuario dueño del token |
 
 ```json
 POST /api/auth/login
 { "usuario": "admin", "password": "admin123" }
 ```
+
+```json
+200 OK
+{
+  "tokenType": "Bearer",
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "expiresInSeconds": 3600,
+  "usuario": { "id": 1, "usuario": "admin", "rol": "ADMINISTRADOR", "...": "..." }
+}
+```
+
+- El token se firma con HS256 y dura 60 minutos (`app.jwt.ttl-minutes`). Lleva `sub` (el usuario), `iss`, `iat`, `exp` y `roles`. Está firmado, **no cifrado**: no lleva datos sensibles.
+- Credenciales incorrectas responden 401 con el mismo mensaje exista o no el usuario. Un usuario inactivo responde 403, y solo después de comprobar que la contraseña es correcta.
+- `perfil` ya no recibe `?usuarioId=`: la identidad sale del token, no de un parámetro que el cliente podría falsificar.
+- El servidor no guarda tokens, así que `logout` no puede invalidarlos: el token sigue siendo válido hasta que vence.
+
+## Permisos por rol
+
+Leer es `GET`; escribir es `POST`, `PUT`, `PATCH` o `DELETE`. La matriz es la que devuelve `/api/usuarios/{id}/permisos`, aplicada por `SecurityConfig`.
+
+| Módulo | ADMINISTRADOR | ODONTOLOGO | RECEPCIONISTA | ASISTENTE |
+|--------|:---:|:---:|:---:|:---:|
+| Usuarios | leer y escribir | — | — | — |
+| Pacientes | leer y escribir | leer y escribir | leer y escribir | leer |
+| Citas | leer y escribir | leer y escribir | leer y escribir | leer |
+| Historias clínicas | leer y escribir | leer y escribir | — | — |
+| Odontograma | leer y escribir | leer y escribir | — | — |
+| Tratamientos | leer y escribir | leer y escribir | — | — |
+| Archivos clínicos | leer y escribir | leer y escribir | — | — |
+| Pagos | leer y escribir | — | leer y escribir | — |
+| Reportes | leer | solo el historial clínico | leer, salvo el historial clínico | — |
+| Dashboard, perfil | leer | leer | leer | leer |
+
+Excepciones: cualquier usuario autenticado puede cambiar **su propia** contraseña y ver **sus propios** permisos. El historial consolidado de un paciente (`/api/reportes/historial/{id}`) incluye consultas clínicas, por eso exige acceso clínico.
 
 ## Usuarios y roles — Integrante 1
 
@@ -40,13 +81,13 @@ POST /api/auth/login
 | GET | `/api/usuarios/{id}` | Consulta uno |
 | POST | `/api/usuarios` | Crea. Rechaza usuario o correo repetido |
 | PUT | `/api/usuarios/{id}` | Reemplaza los datos |
-| PATCH | `/api/usuarios/{id}/password` | Cambia la contraseña |
+| PATCH | `/api/usuarios/{id}/password` | Cambia la contraseña. El propio usuario o un administrador |
 | PATCH | `/api/usuarios/{id}/activar` | Reactiva la cuenta |
 | PATCH | `/api/usuarios/{id}/desactivar` | Baja lógica |
 | DELETE | `/api/usuarios/{id}` | Elimina |
-| GET | `/api/usuarios/{id}/permisos` | Permisos según el rol |
+| GET | `/api/usuarios/{id}/permisos` | Permisos según el rol. El propio usuario o un administrador |
 
-Roles: `ADMINISTRADOR`, `ODONTOLOGO`, `RECEPCIONISTA`, `ASISTENTE`. La contraseña nunca aparece en las respuestas.
+Roles: `ADMINISTRADOR`, `ODONTOLOGO`, `RECEPCIONISTA`, `ASISTENTE`. Las contraseñas se guardan solo como hash BCrypt y nunca aparecen en las respuestas.
 
 ## Pacientes — Integrante 2
 
@@ -59,9 +100,9 @@ Roles: `ADMINISTRADOR`, `ODONTOLOGO`, `RECEPCIONISTA`, `ASISTENTE`. La contrase�
 | PUT | `/api/pacientes/{id}` | Reemplaza los datos |
 | PATCH | `/api/pacientes/{id}/antecedentes` | Actualiza solo los antecedentes |
 | PATCH | `/api/pacientes/{id}/estado` | Activa o desactiva |
-| DELETE | `/api/pacientes/{id}` | Elimina |
+| DELETE | `/api/pacientes/{id}` | Elimina. 409 si tiene citas, historias, tratamientos, pagos o archivos |
 
-El documento debe tener ocho dígitos. La edad se calcula sola a partir de la fecha de nacimiento.
+El documento debe tener ocho dígitos. La edad se calcula sola a partir de la fecha de nacimiento. Para retirar a un paciente con historial se usa `PATCH /estado`, no `DELETE`.
 
 ## Citas y agenda — Integrante 3
 
@@ -82,7 +123,7 @@ El documento debe tener ocho dígitos. La edad se calcula sola a partir de la fe
 
 Estados: `PENDIENTE`, `CONFIRMADA`, `ATENDIDA`, `CANCELADA`, `NO_ASISTIO`, `REPROGRAMADA`.
 
-Reglas: un odontólogo no puede tener dos citas que se solapen. Las canceladas y reprogramadas no ocupan la agenda. Desde `CANCELADA` o `ATENDIDA` no se puede volver a otro estado. Al reprogramar se crea una cita nueva que apunta a la original.
+Reglas: un odontólogo no puede tener dos citas que se solapen. Las canceladas y reprogramadas no ocupan la agenda. Desde `CANCELADA` o `ATENDIDA` no se puede volver a otro estado. Al reprogramar se crea una cita nueva que apunta a la original; los dos cambios ocurren en una sola transacción, y si uno falla no queda ninguno.
 
 ## Dashboard — Integrante 3
 
@@ -132,7 +173,7 @@ Cada cambio crea un registro nuevo, nunca edita el anterior. El estado actual de
 
 Estados: `PENDIENTE`, `APROBADO`, `EN_PROCESO`, `COMPLETADO`, `CANCELADO`.
 
-Reglas: un tratamiento completado o cancelado no se modifica ni acepta sesiones nuevas. Al completarlo se registra la fecha de fin. No se elimina un tratamiento que ya tiene pagos.
+Reglas: un tratamiento completado o cancelado no se modifica ni acepta sesiones nuevas. Al completarlo se registra la fecha de fin. No se elimina un tratamiento que ya tiene pagos. El precio admite hasta dos decimales.
 
 ## Pagos — Integrante 5
 
@@ -147,7 +188,7 @@ Reglas: un tratamiento completado o cancelado no se modifica ni acepta sesiones 
 
 Métodos: `EFECTIVO`, `TARJETA`, `TRANSFERENCIA`, `YAPE`, `PLIN`.
 
-Reglas: el monto no puede superar el saldo pendiente. Un tratamiento cancelado no admite pagos. El saldo nunca queda negativo.
+Reglas: el monto no puede superar el saldo pendiente y admite hasta dos decimales. Un tratamiento cancelado no admite pagos. El saldo nunca queda negativo. Los importes son exactos (`BigDecimal`, `DECIMAL(12,2)` en la base). Mientras se registra un pago, la fila del tratamiento queda bloqueada: si llegan dos cobros a la vez, el segundo espera y ve el saldo ya actualizado.
 
 ## Archivos clínicos — Integrante 6
 
@@ -163,9 +204,9 @@ Reglas: el monto no puede superar el saldo pendiente. Un tratamiento cancelado n
 
 Tipos: `RADIOGRAFIA`, `FOTOGRAFIA`, `INFORME`, `CONSENTIMIENTO`, `RECETA`, `DOCUMENTO`.
 
-Campos de la subida: `archivo`, `pacienteId`, `usuarioId`, `tipo`, `descripcion`, `historiaClinicaId`.
+Campos de la subida: `archivo`, `pacienteId`, `tipo`, `descripcion`, `historiaClinicaId`. Ya no se envía `usuarioId`: quién sube el archivo se toma del token.
 
-Reglas: extensiones permitidas jpg, jpeg, png, gif, bmp, webp, pdf, doc, docx y txt. Tamaño máximo diez megabytes. En disco cada archivo recibe un nombre único, así dos archivos con el mismo nombre no se pisan. La ruta física nunca aparece en las respuestas y solo se accede al contenido por el endpoint de descarga.
+Reglas: extensiones permitidas jpg, jpeg, png, gif, bmp, webp, pdf, doc, docx y txt. Tamaño máximo diez megabytes. En disco cada archivo recibe un nombre único, así dos archivos con el mismo nombre no se pisan. La ruta física nunca aparece en las respuestas y solo se accede al contenido por el endpoint de descarga. **Los archivos no son públicos:** solo el administrador y el odontólogo pueden listarlos, subirlos o descargarlos.
 
 ## Reportes — Integrante 6
 
@@ -176,33 +217,43 @@ Reglas: extensiones permitidas jpg, jpeg, png, gif, bmp, webp, pdf, doc, docx y 
 | GET | `/api/reportes/tratamientos?desde=&hasta=` | Realizados y pendientes con sus montos |
 | GET | `/api/reportes/ingresos?desde=&hasta=` | Ingresos por método de pago y por mes |
 | GET | `/api/reportes/pagos-pendientes` | Tratamientos con saldo |
-| GET | `/api/reportes/historial/{pacienteId}` | Consolidado de un paciente |
+| GET | `/api/reportes/historial/{pacienteId}` | Consolidado de un paciente. Requiere acceso clínico |
 
-Las fechas van en formato `yyyy-MM-dd` y son opcionales. Si la fecha inicial es posterior a la final, la respuesta es 400.
+Las fechas van en formato `yyyy-MM-dd` y son opcionales. Si la fecha inicial es posterior a la final, la respuesta es 400. El total de ingresos y el desglose por método los calcula la base de datos con JPQL (`SUM` y `GROUP BY`).
 
 ## Ejemplos con curl
 
-En Windows conviene usar `curl.exe` para evitar el alias de PowerShell.
+Primero se inicia sesión y se guarda el token; después se envía en cada petición. En Git Bash:
 
 ```bash
-# Iniciar sesión
-curl -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d "{\"usuario\":\"admin\",\"password\":\"admin123\"}"
+# Iniciar sesion y guardar el token
+TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" \
+  -d '{"usuario":"admin","password":"admin123"}' | sed -E 's/.*"accessToken":"([^"]+)".*/\1/')
 
 # Buscar pacientes por nombre
-curl "http://localhost:8080/api/pacientes?texto=torres"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/pacientes?texto=torres"
 
 # Agenda de hoy
-curl "http://localhost:8080/api/citas/agenda?dia=2026-09-04"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/citas/agenda?dia=2026-09-04"
 
 # Registrar un estado en el odontograma
-curl -X POST http://localhost:8080/api/odontograma -H "Content-Type: application/json" -d "{\"pacienteId\":2,\"odontologoId\":2,\"numeroPieza\":46,\"estado\":\"OBTURADO\",\"superficie\":\"Oclusal\"}"
+curl -X POST http://localhost:8080/api/odontograma -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"pacienteId":2,"odontologoId":2,"numeroPieza":46,"estado":"OBTURADO","superficie":"Oclusal"}'
 
 # Registrar un pago
-curl -X POST http://localhost:8080/api/pagos -H "Content-Type: application/json" -d "{\"tratamientoId\":1,\"monto\":150.0,\"metodo\":\"EFECTIVO\"}"
+curl -X POST http://localhost:8080/api/pagos -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"tratamientoId":1,"monto":150.00,"metodo":"EFECTIVO"}'
 
-# Subir un archivo clínico
-curl -X POST http://localhost:8080/api/archivos -F "archivo=@radiografia.png" -F "pacienteId=2" -F "usuarioId=2" -F "tipo=RADIOGRAFIA"
+# Subir un archivo clinico
+curl -X POST http://localhost:8080/api/archivos -H "Authorization: Bearer $TOKEN" \
+  -F "archivo=@radiografia.png" -F "pacienteId=2" -F "tipo=RADIOGRAFIA"
 
 # Reporte de ingresos del año
-curl "http://localhost:8080/api/reportes/ingresos?desde=2026-01-01&hasta=2026-12-31"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/reportes/ingresos?desde=2026-01-01&hasta=2026-12-31"
+
+# Sin token: 401
+curl -i http://localhost:8080/api/pacientes
 ```
+
+En PowerShell conviene usar `curl.exe` para evitar el alias, o directamente la colección de Postman de [../postman/](../postman/), que ya gestiona el token.

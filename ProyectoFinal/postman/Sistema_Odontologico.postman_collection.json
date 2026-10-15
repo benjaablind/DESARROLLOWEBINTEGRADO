@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sistema de Gestion Odontologica - API REST",
-    "description": "Coleccion de pruebas de la API REST del Sistema de Gestion Odontologica (Proyecto Final - Desarrollo Web Integrado, UTP).\n\nAntes de ejecutar: levantar el backend con `mvn spring-boot:run` desde ProyectoFinal/backend. La API queda en http://localhost:8080/api y carga datos de demostracion al arrancar.\n\nCada carpeta corresponde a un integrante y a su modulo. Las solicitudes estan en el orden de la sustentacion: primero el caso correcto y despues el caso de error, para mostrar la validacion de datos y el manejador global de excepciones.\n\nCada solicitud tiene una prueba automatica que verifica el codigo de estado esperado: al enviarla se ve 'PASS' en la pestana Test Results. Para ejecutar todo de una vez, usar Run collection.\n\nLas fechas y el DNI de prueba se calculan solos en el script de la coleccion, asi que no hay que editar nada a mano.\n\nLa unica solicitud que necesita un archivo local es la subida de la carpeta 6: apunta a radiografia-ejemplo.png, incluido en la carpeta postman del repositorio.",
+    "description": "Coleccion de pruebas de la API REST del Sistema de Gestion Odontologica (Proyecto Final - Desarrollo Web Integrado, UTP).\n\nAntes de ejecutar: levantar el backend con `mvn spring-boot:run` desde ProyectoFinal/backend. La API queda en http://localhost:8080/api y carga datos de demostracion al arrancar.\n\nCada carpeta corresponde a un integrante y a su modulo. Las solicitudes estan en el orden de la sustentacion: primero el caso correcto y despues el caso de error, para mostrar la validacion de datos y el manejador global de excepciones.\n\nCada solicitud tiene una prueba automatica que verifica el codigo de estado esperado: al enviarla se ve 'PASS' en la pestana Test Results. Para ejecutar todo de una vez, usar Run collection.\n\nLas fechas y el DNI de prueba se calculan solos en el script de la coleccion, asi que no hay que editar nada a mano.\n\nLa unica solicitud que necesita un archivo local es la subida de la carpeta 6: apunta a radiografia-ejemplo.png, incluido en la carpeta postman del repositorio.\n\nSemanas 8 y 9: la API exige JWT. La primera peticion (1. Login correcto) guarda el token en la variable {{token}} y todas las demas lo envian como Authorization: Bearer. Ejecutar la coleccion completa en orden (Run collection).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -39,6 +39,18 @@
       "key": "baseUrl",
       "value": "http://localhost:8080/api",
       "type": "string"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenAsistente",
+      "value": ""
+    },
+    {
+      "key": "tokenRecepcionista",
+      "value": ""
     }
   ],
   "item": [
@@ -58,9 +70,16 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test('El usuario queda autenticado', function () {",
-                  "    pm.expect(pm.response.json().autenticado).to.eql(true);",
-                  "});"
+                  "pm.test('Devuelve un JWT y nunca la contrasena', function () {",
+                  "    const cuerpo = pm.response.json();",
+                  "    pm.expect(cuerpo.tokenType).to.eql('Bearer');",
+                  "    pm.expect(cuerpo.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(cuerpo.usuario.rol).to.eql('ADMINISTRADOR');",
+                  "    pm.expect(cuerpo.usuario).to.not.have.property('password');",
+                  "});",
+                  "",
+                  "// Todas las demas peticiones usan este token (Authorization: Bearer {{token}}).",
+                  "pm.collectionVariables.set('token', pm.response.json().accessToken);"
                 ]
               }
             }
@@ -83,7 +102,7 @@
                 "login"
               ]
             },
-            "description": "Credenciales de demostracion. Devuelve el usuario autenticado, nunca la contrasena.",
+            "description": "Credenciales de demostracion. Devuelve un JWT firmado (HS256) que la coleccion guarda en {{token}}; el resto de peticiones lo envian como Bearer.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"usuario\": \"admin\",\n  \"password\": \"admin123\"\n}",
@@ -92,19 +111,22 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           }
         },
         {
-          "name": "Login con credenciales incorrectas (400)",
+          "name": "Login con credenciales incorrectas (401)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Responde 400', function () {",
-                  "    pm.response.to.have.status(400);",
+                  "pm.test('Responde 401: credenciales invalidas', function () {",
+                  "    pm.response.to.have.status(401);",
                   "});"
                 ]
               }
@@ -137,6 +159,183 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401: falta el token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "Sin Authorization: Bearer la API responde 401 antes de llegar al controlador.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Perfil del usuario del token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200: perfil del token', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Es el usuario que inicio sesion', function () {",
+                  "    pm.expect(pm.response.json().usuario).to.eql('admin');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/perfil",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "perfil"
+              ]
+            },
+            "description": "La identidad sale del JWT; ya no se envia ?usuarioId=."
+          }
+        },
+        {
+          "name": "Login como asistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 con un JWT', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().tokenType).to.eql('Bearer');",
+                  "    pm.expect(pm.response.json().accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('tokenAsistente', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "El asistente solo puede consultar pacientes y citas.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"jpalma\",\n  \"password\": \"jpalma123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Asistente intenta registrar un paciente (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403: el rol no tiene permiso', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pacientes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pacientes"
+              ]
+            },
+            "description": "Autenticado pero sin permiso: el rol ASISTENTE no escribe pacientes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"{{dniNuevo}}\",\n  \"nombres\": \"Prueba\",\n  \"apellidos\": \"Permisos\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAsistente}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
@@ -2230,7 +2429,7 @@
                 "archivos"
               ]
             },
-            "description": "Unica solicitud que no viaja en JSON: usa multipart/form-data.\n\nEl archivo ya viene apuntado a 'radiografia-ejemplo.png', que esta en esta misma carpeta del repositorio. Si Postman avisa que no lo encuentra, hay dos opciones: ir a Body > form-data, fila 'archivo', pulsar 'Select Files' y elegirlo a mano, o dejarlo fijo en Settings > General > Working directory, apuntando a la carpeta ProyectoFinal/postman.",
+            "description": "Unica solicitud que no viaja en JSON: usa multipart/form-data.\n\nEl archivo ya viene apuntado a 'radiografia-ejemplo.png', que esta en esta misma carpeta del repositorio. Si Postman avisa que no lo encuentra, hay dos opciones: ir a Body > form-data, fila 'archivo', pulsar 'Select Files' y elegirlo a mano, o dejarlo fijo en Settings > General > Working directory, apuntando a la carpeta ProyectoFinal/postman. Quien sube el archivo se toma del token; ya no se envia usuarioId.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -2243,11 +2442,6 @@
                 {
                   "key": "pacienteId",
                   "value": "1",
-                  "type": "text"
-                },
-                {
-                  "key": "usuarioId",
-                  "value": "2",
                   "type": "text"
                 },
                 {
@@ -2656,8 +2850,185 @@
             },
             "description": "Validacion de negocio: la fecha inicial no puede ser posterior a la final."
           }
+        },
+        {
+          "name": "Login como recepcionista",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 200 con un JWT', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().tokenType).to.eql('Bearer');",
+                  "    pm.expect(pm.response.json().accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.collectionVariables.set('tokenRecepcionista', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "La recepcion maneja pacientes, citas, pagos y reportes, pero nada clinico.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"rdiaz\",\n  \"password\": \"rdiaz123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Recepcionista no accede a archivos clinicos (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403: archivos no publicos', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos"
+              ]
+            },
+            "description": "Los archivos clinicos (radiografias, consentimientos) solo los ven administrador y odontologo.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcionista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Recepcionista no ve el historial clinico consolidado (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 403: historial clinico protegido', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/historial/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "historial",
+                "1"
+              ]
+            },
+            "description": "El historial consolidado incluye consultas clinicas: exige acceso clinico.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenRecepcionista}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Archivos sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Responde 401: falta el token', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/archivos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "archivos"
+              ]
+            },
+            "description": "Sin token nadie puede listar ni descargar archivos clinicos.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
         }
       ]
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
 }

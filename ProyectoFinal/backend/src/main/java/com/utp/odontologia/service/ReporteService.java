@@ -1,5 +1,6 @@
 package com.utp.odontologia.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.ArchivoResponse;
 import com.utp.odontologia.dto.ReporteCitaItem;
@@ -54,6 +56,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  * reporte completo sin enviar parametros.
  */
 @Service
+@Transactional(readOnly = true)
 public class ReporteService {
 
     /** Inicio del rango por defecto cuando el cliente no envia la fecha desde. */
@@ -155,8 +158,12 @@ public class ReporteService {
                         || (!t.getFechaInicio().isBefore(inicio) && !t.getFechaInicio().isAfter(fin)))
                 .toList();
 
-        double montoRealizados = realizados.stream().mapToDouble(Tratamiento::getPrecio).sum();
-        double montoPendientes = pendientes.stream().mapToDouble(Tratamiento::getPrecio).sum();
+        BigDecimal montoRealizados = realizados.stream()
+                .map(Tratamiento::getPrecio)
+                .reduce(Montos.CERO, Montos::sumar);
+        BigDecimal montoPendientes = pendientes.stream()
+                .map(Tratamiento::getPrecio)
+                .reduce(Montos.CERO, Montos::sumar);
 
         List<ReporteTratamientoItem> items = new ArrayList<>();
         realizados.forEach(t -> items.add(aItem(t)));
@@ -164,7 +171,7 @@ public class ReporteService {
 
         return new ReporteTratamientosResponse(inicio, fin,
                 realizados.size(), pendientes.size(),
-                redondear(montoRealizados), redondear(montoPendientes), items);
+                montoRealizados, montoPendientes, items);
     }
 
     /** Ingresos cobrados en el periodo, agrupados por metodo de pago y por mes. */
@@ -175,23 +182,22 @@ public class ReporteService {
 
         List<Pago> pagos = pagoRepository.listarEntre(inicio, fin);
 
-        double total = pagos.stream().mapToDouble(Pago::getMonto).sum();
+        // El total y el desglose por metodo los calcula la base de datos (JPQL
+        // con SUM y GROUP BY); el desglose por mes se arma en Java porque
+        // depende del formato de la clave "yyyy-MM".
+        BigDecimal total = Montos.redondear(pagoRepository.totalEntre(inicio, fin));
 
-        Map<String, Double> porMetodo = new LinkedHashMap<>();
-        Map<String, Double> porMes = new TreeMap<>();
+        Map<String, BigDecimal> porMetodo = new LinkedHashMap<>();
+        pagoRepository.totalesPorMetodoEntre(inicio.atStartOfDay(), fin.plusDays(1).atStartOfDay())
+                .forEach(fila -> porMetodo.put(fila.metodo().name(), Montos.redondear(fila.total())));
 
+        Map<String, BigDecimal> porMes = new TreeMap<>();
         for (Pago pago : pagos) {
-            String metodo = pago.getMetodo() == null ? "SIN_METODO" : pago.getMetodo().name();
-            porMetodo.merge(metodo, pago.getMonto(), Double::sum);
-
             String mes = pago.getFecha().format(CLAVE_MES);
-            porMes.merge(mes, pago.getMonto(), Double::sum);
+            porMes.merge(mes, Montos.redondear(pago.getMonto()), Montos::sumar);
         }
 
-        porMetodo.replaceAll((clave, monto) -> redondear(monto));
-        porMes.replaceAll((clave, monto) -> redondear(monto));
-
-        return new ReporteIngresosResponse(inicio, fin, redondear(total), pagos.size(),
+        return new ReporteIngresosResponse(inicio, fin, total, pagos.size(),
                 porMetodo, porMes);
     }
 
@@ -199,16 +205,16 @@ public class ReporteService {
     public ReportePagosPendientesResponse pagosPendientes() {
         List<ReporteTratamientoItem> items = tratamientoRepository.listarActivos().stream()
                 .map(this::aItem)
-                .filter(item -> item.saldoPendiente() > 0)
-                .sorted(Comparator.comparingDouble(ReporteTratamientoItem::saldoPendiente)
+                .filter(item -> item.saldoPendiente().signum() > 0)
+                .sorted(Comparator.comparing(ReporteTratamientoItem::saldoPendiente)
                         .reversed())
                 .toList();
 
-        double total = items.stream()
-                .mapToDouble(ReporteTratamientoItem::saldoPendiente)
-                .sum();
+        BigDecimal total = items.stream()
+                .map(ReporteTratamientoItem::saldoPendiente)
+                .reduce(Montos.CERO, Montos::sumar);
 
-        return new ReportePagosPendientesResponse(redondear(total), items.size(), items);
+        return new ReportePagosPendientesResponse(total, items.size(), items);
     }
 
     /** Historial consolidado de un paciente: consultas, citas, tratamientos y archivos. */
@@ -225,20 +231,19 @@ public class ReporteService {
         List<Tratamiento> tratamientos = tratamientoRepository.listarPorPaciente(pacienteId);
         List<Archivo> archivos = archivoRepository.listarPorPaciente(pacienteId);
 
-        double totalPagado = pagoRepository.listarPorPaciente(pacienteId).stream()
-                .mapToDouble(Pago::getMonto)
-                .sum();
+        BigDecimal totalPagado = pagoRepository.listarPorPaciente(pacienteId).stream()
+                .map(Pago::getMonto)
+                .reduce(Montos.CERO, Montos::sumar);
 
         List<ReporteTratamientoItem> itemsTratamiento = tratamientos.stream()
                 .map(this::aItem)
                 .toList();
 
         // El saldo del paciente solo considera los tratamientos que siguen vigentes.
-        double saldoPendiente = tratamientos.stream()
+        BigDecimal saldoPendiente = tratamientos.stream()
                 .filter(Tratamiento::estaActivo)
-                .mapToDouble(t -> Math.max(0,
-                        t.getPrecio() - pagoRepository.totalPagadoDeTratamiento(t.getId())))
-                .sum();
+                .map(t -> Montos.saldo(t.getPrecio(), pagoRepository.totalPagadoDeTratamiento(t.getId())))
+                .reduce(Montos.CERO, Montos::sumar);
 
         List<ReporteConsultaItem> itemsConsulta = consultas.stream()
                 .map(ReporteConsultaItem::desde)
@@ -265,8 +270,8 @@ public class ReporteService {
                 citas.size(),
                 tratamientos.size(),
                 archivos.size(),
-                redondear(totalPagado),
-                redondear(saldoPendiente),
+                totalPagado,
+                saldoPendiente,
                 itemsConsulta,
                 itemsCita,
                 itemsTratamiento,
@@ -275,17 +280,17 @@ public class ReporteService {
 
     /** Arma la fila de tratamiento calculando lo pagado y el saldo por cobrar. */
     private ReporteTratamientoItem aItem(Tratamiento tratamiento) {
-        double pagado = pagoRepository.totalPagadoDeTratamiento(tratamiento.getId());
-        double saldo = Math.max(0, tratamiento.getPrecio() - pagado);
+        BigDecimal pagado = Montos.redondear(pagoRepository.totalPagadoDeTratamiento(tratamiento.getId()));
+        BigDecimal saldo = Montos.saldo(tratamiento.getPrecio(), pagado);
 
         return new ReporteTratamientoItem(
                 tratamiento.getId(),
                 nombrePaciente(tratamiento.getPacienteId()),
                 tratamiento.getNombre(),
                 tratamiento.getEstado(),
-                redondear(tratamiento.getPrecio()),
-                redondear(pagado),
-                redondear(saldo),
+                Montos.redondear(tratamiento.getPrecio()),
+                pagado,
+                saldo,
                 tratamiento.getFechaInicio(),
                 tratamiento.getFechaFin());
     }
@@ -318,10 +323,5 @@ public class ReporteService {
             throw new ReglaNegocioException(
                     "La fecha inicial no puede ser posterior a la fecha final");
         }
-    }
-
-    /** Redondea importes a dos decimales para que el frontend no muestre colas largas. */
-    private double redondear(double valor) {
-        return Math.round(valor * 100.0) / 100.0;
     }
 }

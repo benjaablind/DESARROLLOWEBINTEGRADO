@@ -1,5 +1,17 @@
 package com.utp.odontologia.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -11,20 +23,64 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
  * entrega por el endpoint de descarga. La ubicacion fisica no se expone al
  * cliente para que los archivos no queden accesibles de forma directa.
  */
+@Entity
+@Table(name = "archivos")
 public class Archivo {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "paciente_id", nullable = false)
     private Long pacienteId;
+
+    // Relaciones de solo lectura sobre las mismas columnas: generan las claves
+    // foraneas y permiten navegar en JPQL, mientras los servicios siguen
+    // asignando las referencias por id.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paciente_id", insertable = false, updatable = false)
+    private Paciente paciente;
+
+    @Column(name = "usuario_id")
     private Long usuarioId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", insertable = false, updatable = false)
+    private Usuario usuario;
+
+    @Column(name = "historia_clinica_id")
     private Long historiaClinicaId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "historia_clinica_id", insertable = false, updatable = false)
+    private HistoriaClinica historiaClinica;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private TipoArchivo tipo;
+
+    @Column(nullable = false, length = 255)
     private String nombre;
+
+    @Column(name = "nombre_original", length = 255)
     private String nombreOriginal;
+
+    @Column(length = 10)
     private String extension;
+
+    @Column(name = "content_type", length = 100)
     private String contentType;
+
+    @Column(name = "tamano_bytes", nullable = false)
     private long tamanoBytes;
+
+    @Column(length = 500)
     private String descripcion;
+
+    @Column(nullable = false, length = 500)
     private String ubicacion;
+
+    @Column(name = "fecha_subida", nullable = false)
     private LocalDateTime fechaSubida = LocalDateTime.now();
 
     public Archivo() {

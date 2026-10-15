@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -13,8 +14,8 @@ public record ReporteHistorialPacienteResponse(
         long totalCitas,
         long totalTratamientos,
         long totalArchivos,
-        double totalPagado,
-        double saldoPendiente,
+        BigDecimal totalPagado,
+        BigDecimal saldoPendiente,
         List<ReporteConsultaItem> consultas,
         List<ReporteCitaItem> citas,
         List<ReporteTratamientoItem> tratamientos,

@@ -1,5 +1,7 @@
 # Guía de sustentación — Sistema de Gestión Odontológica
 
+> **Esta guía es del Avance 1 (semanas 1 a 4)** y se conserva como registro de esa entrega. Para el Avance 2 (semanas 6 a 10: base de datos, JPQL, transacciones, seguridad y JWT) ver [GUIA_AVANCE_2.md](GUIA_AVANCE_2.md).
+
 Lo que pide el profesor para esta entrega:
 
 - **Un solo entregable:** el enlace al repositorio **público** en GitHub.
