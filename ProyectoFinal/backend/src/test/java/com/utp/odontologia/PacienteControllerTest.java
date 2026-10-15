@@ -18,9 +18,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.utp.odontologia.model.Antecedentes;
@@ -34,10 +35,16 @@ import com.utp.odontologia.repository.PacienteRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class PacienteControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private PacienteRepository pacienteRepository;
@@ -48,8 +55,7 @@ class PacienteControllerTest {
 
     @BeforeEach
     void prepararDatos() {
-        pacienteRepository.limpiar();
-
+        baseDeDatos.limpiar();
         ana = pacienteRepository.guardar(nuevo("12345678", "Ana Maria", "Torres Vega",
                 LocalDate.of(1990, 5, 12), "F", "987654321", EstadoPaciente.ACTIVO));
         luis = pacienteRepository.guardar(nuevo("87654321", "Luis Alberto", "Ramirez Soto",

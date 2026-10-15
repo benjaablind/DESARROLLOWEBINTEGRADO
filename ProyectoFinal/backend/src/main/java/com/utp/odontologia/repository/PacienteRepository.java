@@ -1,51 +1,62 @@
 package com.utp.odontologia.repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.utp.odontologia.model.EstadoPaciente;
 import com.utp.odontologia.model.Paciente;
 
 /** Repositorio de pacientes (Integrante 2). */
-@Repository
-public class PacienteRepository extends RepositorioEnMemoria<Paciente> {
+public interface PacienteRepository extends RepositorioBase<Paciente> {
 
-    @Override
-    protected Long obtenerId(Paciente entidad) {
-        return entidad.getId();
-    }
+    Optional<Paciente> findByDni(String dni);
 
-    @Override
-    protected void asignarId(Paciente entidad, Long id) {
-        entidad.setId(id);
-    }
+    List<Paciente> findByEstadoOrderById(EstadoPaciente estado);
 
-    public Optional<Paciente> buscarPorDni(String dni) {
-        return listar().stream()
-                .filter(p -> p.getDni() != null && p.getDni().equals(dni))
-                .findFirst();
+    /**
+     * JPQL: coincidencia parcial en el nombre completo o el DNI. Consulta la
+     * entidad Paciente y sus atributos; Hibernate la traduce al SQL del motor.
+     */
+    @Query("""
+            SELECT p
+            FROM Paciente p
+            WHERE LOWER(CONCAT(p.nombres, ' ', p.apellidos)) LIKE CONCAT('%', :texto, '%')
+               OR p.dni LIKE CONCAT('%', :texto, '%')
+            ORDER BY p.id
+            """)
+    List<Paciente> buscarCoincidencias(@Param("texto") String textoEnMinusculas);
+
+    @Query("""
+            SELECT p
+            FROM Paciente p
+            WHERE p.fechaRegistro >= :inicio AND p.fechaRegistro < :fin
+            ORDER BY p.id
+            """)
+    List<Paciente> registradosEntre(@Param("inicio") LocalDateTime inicio,
+            @Param("fin") LocalDateTime finExclusivo);
+
+    default Optional<Paciente> buscarPorDni(String dni) {
+        return dni == null ? Optional.empty() : findByDni(dni);
     }
 
     /** Busca por coincidencia parcial en nombres, apellidos o DNI. */
-    public List<Paciente> buscarPorTexto(String texto) {
+    default List<Paciente> buscarPorTexto(String texto) {
         String buscado = texto == null ? "" : texto.trim().toLowerCase(Locale.ROOT);
-        return listarSi(p -> p.getNombreCompleto().toLowerCase(Locale.ROOT).contains(buscado)
-                || (p.getDni() != null && p.getDni().contains(buscado)));
+        return buscarCoincidencias(buscado);
     }
 
-    public List<Paciente> listarPorEstado(EstadoPaciente estado) {
-        return listarSi(p -> p.getEstado() == estado);
+    default List<Paciente> listarPorEstado(EstadoPaciente estado) {
+        return findByEstadoOrderById(estado);
     }
 
     /** Pacientes registrados dentro de un rango de fechas, inclusive. */
-    public List<Paciente> listarPorRangoDeRegistro(LocalDate desde, LocalDate hasta) {
-        return listarSi(p -> {
-            LocalDate fecha = p.getFechaRegistro().toLocalDate();
-            return !fecha.isBefore(desde) && !fecha.isAfter(hasta);
-        });
+    default List<Paciente> listarPorRangoDeRegistro(LocalDate desde, LocalDate hasta) {
+        return registradosEntre(desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay());
     }
 }
