@@ -17,12 +17,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.utp.odontologia.dto.CitaEstadoRequest;
 import com.utp.odontologia.dto.CitaReprogramarRequest;
 import com.utp.odontologia.dto.CitaRequest;
@@ -41,10 +42,16 @@ import com.utp.odontologia.repository.UsuarioRepository;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMINISTRADOR")
 class CitaControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+
+    @Autowired
+
+    private LimpiadorBaseDatos baseDeDatos;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -69,10 +76,7 @@ class CitaControllerTest {
 
     @BeforeEach
     void prepararEscenario() {
-        citaRepository.limpiar();
-        pacienteRepository.limpiar();
-        usuarioRepository.limpiar();
-
+        baseDeDatos.limpiar();
         manana = LocalDate.now().plusDays(1);
         pasadoManana = LocalDate.now().plusDays(2);
 

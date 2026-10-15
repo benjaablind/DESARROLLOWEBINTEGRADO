@@ -1,22 +1,72 @@
 package com.utp.odontologia.model;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.time.LocalDateTime;
 
 /**
  * Cita de la agenda (Integrante 3).
  * Referencia al paciente y al odontologo por id para no acoplar los modulos.
  */
+@Entity
+@Table(name = "citas")
 public class Cita {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "paciente_id", nullable = false)
     private Long pacienteId;
+
+    // Relaciones de solo lectura sobre las mismas columnas: generan las claves
+    // foraneas y permiten navegar en JPQL, mientras los servicios siguen
+    // asignando las referencias por id.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "paciente_id", insertable = false, updatable = false)
+    private Paciente paciente;
+
+    @Column(name = "odontologo_id", nullable = false)
     private Long odontologoId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "odontologo_id", insertable = false, updatable = false)
+    private Usuario odontologo;
+
+    @Column(name = "fecha_hora", nullable = false)
     private LocalDateTime fechaHora;
+
+    @Column(name = "duracion_minutos", nullable = false)
     private int duracionMinutos = 30;
+
+    @Column(length = 255)
     private String motivo;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private EstadoCita estado = EstadoCita.PENDIENTE;
+
+    @Column(length = 1000)
     private String observaciones;
+
+    @Column(name = "cita_original_id")
     private Long citaOriginalId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cita_original_id", insertable = false, updatable = false)
+    private Cita citaOriginal;
+
+    @Column(name = "fecha_registro", nullable = false)
     private LocalDateTime fechaRegistro = LocalDateTime.now();
 
     public Cita() {

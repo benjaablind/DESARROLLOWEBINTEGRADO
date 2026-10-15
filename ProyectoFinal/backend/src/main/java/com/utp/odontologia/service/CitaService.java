@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.CitaEstadoRequest;
 import com.utp.odontologia.dto.CitaReprogramarRequest;
@@ -28,6 +29,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  * que el controlador solo se ocupe del protocolo HTTP.
  */
 @Service
+@Transactional
 public class CitaService {
 
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
@@ -47,6 +49,7 @@ public class CitaService {
      * Lista las citas aplicando los filtros recibidos. Todos son opcionales y
      * combinables: un filtro en null simplemente no se aplica.
      */
+    @Transactional(readOnly = true)
     public List<CitaResponse> listar(LocalDate dia, Long pacienteId, Long odontologoId,
             EstadoCita estado) {
 
@@ -60,6 +63,7 @@ public class CitaService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public CitaResponse buscarPorId(Long id) {
         return aRespuesta(obtener(id));
     }
@@ -166,6 +170,7 @@ public class CitaService {
     }
 
     /** Agenda de un dia completo, ordenada por hora. */
+    @Transactional(readOnly = true)
     public List<CitaResponse> agendaDelDia(LocalDate dia) {
         return citaRepository.listarPorDia(dia).stream()
                 .sorted(Comparator.comparing(Cita::getFechaHora))
@@ -177,6 +182,7 @@ public class CitaService {
      * Horas de inicio ya ocupadas por un odontologo en un dia, en formato HH:mm.
      * Las citas canceladas y reprogramadas liberan el horario, por eso no cuentan.
      */
+    @Transactional(readOnly = true)
     public List<String> disponibilidad(Long odontologoId, LocalDate dia) {
         return citaRepository.listarPorDia(dia).stream()
                 .filter(c -> odontologoId != null && odontologoId.equals(c.getOdontologoId()))

@@ -1,5 +1,7 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
+
 import com.utp.odontologia.model.EstadoTratamiento;
 import com.utp.odontologia.model.Tratamiento;
 
@@ -10,11 +12,11 @@ public record DashboardTratamientoResumen(
         String pacienteNombre,
         String nombre,
         EstadoTratamiento estado,
-        double precio,
-        double saldoPendiente) {
+        BigDecimal precio,
+        BigDecimal saldoPendiente) {
 
     public static DashboardTratamientoResumen desde(Tratamiento tratamiento, String pacienteNombre,
-            double saldoPendiente) {
+            BigDecimal saldoPendiente) {
         return new DashboardTratamientoResumen(
                 tratamiento.getId(),
                 tratamiento.getPacienteId(),

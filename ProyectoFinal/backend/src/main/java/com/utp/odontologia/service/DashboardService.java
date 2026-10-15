@@ -1,5 +1,6 @@
 package com.utp.odontologia.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -7,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.CitaResponse;
 import com.utp.odontologia.dto.DashboardPacienteResumen;
@@ -17,7 +19,6 @@ import com.utp.odontologia.dto.Textos;
 import com.utp.odontologia.model.Cita;
 import com.utp.odontologia.model.EstadoCita;
 import com.utp.odontologia.model.Paciente;
-import com.utp.odontologia.model.Pago;
 import com.utp.odontologia.model.Tratamiento;
 import com.utp.odontologia.repository.CitaRepository;
 import com.utp.odontologia.repository.PacienteRepository;
@@ -32,6 +33,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  * unica respuesta para la pantalla de inicio del sistema.
  */
 @Service
+@Transactional(readOnly = true)
 public class DashboardService {
 
     /** Cantidad maxima de filas que se envian en cada lista de detalle. */
@@ -66,25 +68,23 @@ public class DashboardService {
         long citasHoy = citaRepository.listarPorDia(hoy).size();
         long citasPendientes = citaRepository.listarPorEstado(EstadoCita.PENDIENTE).size();
 
-        double pagosPendientes = 0;
+        BigDecimal pagosPendientes = Montos.CERO;
         List<DashboardTratamientoResumen> detalleTratamientos = new ArrayList<>();
         long tratamientosConSaldo = 0;
 
         for (Tratamiento tratamiento : activos) {
-            double saldo = saldoDe(tratamiento);
-            pagosPendientes += saldo;
-            if (saldo > 0) {
+            BigDecimal saldo = saldoDe(tratamiento);
+            pagosPendientes = Montos.sumar(pagosPendientes, saldo);
+            if (saldo.signum() > 0) {
                 tratamientosConSaldo++;
             }
             if (detalleTratamientos.size() < MAXIMO_DETALLE) {
                 detalleTratamientos.add(DashboardTratamientoResumen.desde(tratamiento,
-                        nombreDePaciente(tratamiento.getPacienteId()), redondear(saldo)));
+                        nombreDePaciente(tratamiento.getPacienteId()), saldo));
             }
         }
 
-        double ingresosDelMes = pagoRepository.listarEntre(inicioMes, finMes).stream()
-                .mapToDouble(Pago::getMonto)
-                .sum();
+        BigDecimal ingresosDelMes = Montos.redondear(pagoRepository.totalEntre(inicioMes, finMes));
 
         List<CitaResponse> proximasCitas = citaRepository.listar().stream()
                 .filter(c -> c.getFechaHora().isAfter(ahora))
@@ -115,8 +115,8 @@ public class DashboardService {
                 citasHoy,
                 citasPendientes,
                 activos.size(),
-                redondear(pagosPendientes),
-                redondear(ingresosDelMes),
+                pagosPendientes,
+                ingresosDelMes,
                 proximasCitas,
                 pacientesRecientes,
                 detalleTratamientos,
@@ -165,9 +165,9 @@ public class DashboardService {
     }
 
     /** Saldo del tratamiento sin permitir valores negativos por pagos en exceso. */
-    private double saldoDe(Tratamiento tratamiento) {
-        double pagado = pagoRepository.totalPagadoDeTratamiento(tratamiento.getId());
-        return Math.max(0, tratamiento.getPrecio() - pagado);
+    private BigDecimal saldoDe(Tratamiento tratamiento) {
+        return Montos.saldo(tratamiento.getPrecio(),
+                pagoRepository.totalPagadoDeTratamiento(tratamiento.getId()));
     }
 
     private String nombreDePaciente(Long pacienteId) {
@@ -182,10 +182,5 @@ public class DashboardService {
                 .map(u -> u.getNombreCompleto())
                 .orElse(Textos.SIN_DATO);
         return CitaResponse.desde(cita, paciente, odontologo);
-    }
-
-    /** Evita que los decimales de coma flotante lleguen al frontend. */
-    private double redondear(double valor) {
-        return Math.round(valor * 100.0) / 100.0;
     }
 }
