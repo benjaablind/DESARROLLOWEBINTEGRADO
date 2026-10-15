@@ -1,0 +1,187 @@
+{
+  "info": {
+    "name": "Laboratorio 09 - Autenticacion JWT",
+    "description": "Matriz de pruebas de la seccion 11. Ejecutar primero los dos logins: guardan el token en las variables tokenUsuario y tokenAdmin. Marco Antonio Gonzales del Valle Vargas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "tokenUsuario", "value": "" },
+    { "key": "tokenAdmin", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01. Estado publico, sin token (200)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/publico/estado", "host": ["{{baseUrl}}"], "path": ["api", "publico", "estado"] }
+      }
+    },
+    {
+      "name": "02a. Login usuario (200 + JWT) - guarda tokenUsuario",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set('tokenUsuario', pm.response.json().accessToken);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"usuario\",\n  \"password\": \"Usuario123*\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "02b. Login admin (200 + JWT) - guarda tokenAdmin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  pm.collectionVariables.set('tokenAdmin', pm.response.json().accessToken);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin123*\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "03. Login con contrasena erronea (401)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"username\": \"usuario\",\n  \"password\": \"incorrecta\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      }
+    },
+    {
+      "name": "04. Productos sin token (401)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "05. Productos con token USER (200)",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenUsuario}}" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "06. Crear producto con token USER (403)",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenUsuario}}" } ] },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Audifonos USB\",\n  \"categoria\": \"Tecnologia\",\n  \"precio\": 190.00,\n  \"stock\": 7\n}" },
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "07. Crear producto con token ADMIN (201)",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenAdmin}}" } ] },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Audifonos USB\",\n  \"categoria\": \"Tecnologia\",\n  \"precio\": 190.00,\n  \"stock\": 7\n}" },
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "08. Mi perfil con token ADMIN (200 + roles)",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenAdmin}}" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api", "auth", "me"] }
+      }
+    },
+    {
+      "name": "09. JWT con firma modificada (401)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Altera el primer caracter de la firma del token de admin, sin tocar el original.",
+              "const t = pm.collectionVariables.get('tokenAdmin');",
+              "const i = t.lastIndexOf('.') + 1;",
+              "const alterado = t.substring(0, i) + (t.charAt(i) === 'A' ? 'B' : 'A') + t.substring(i + 1);",
+              "pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + alterado });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "10. JWT vencido (401) - ver descripcion",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenUsuario}}" } ] },
+        "method": "GET",
+        "header": [],
+        "description": "Poner app.jwt.ttl-minutes=1, reiniciar, hacer login (02a) y esperar mas de 2 minutos: el decodificador tolera 60 s de desfase de reloj. Despues ejecutar esta peticion. Esta fila tambien esta automatizada en JwtFlujoCompletoTest.f10_tokenVencido_401.",
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "Reto 15.1 - Reporte sin token (401)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/admin/reporte", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reporte"] }
+      }
+    },
+    {
+      "name": "Reto 15.1 - Reporte con token USER (403)",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenUsuario}}" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/admin/reporte", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reporte"] }
+      }
+    },
+    {
+      "name": "Reto 15.1 - Reporte con token ADMIN (200)",
+      "request": {
+        "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{tokenAdmin}}" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/admin/reporte", "host": ["{{baseUrl}}"], "path": ["api", "admin", "reporte"] }
+      }
+    }
+  ]
+}

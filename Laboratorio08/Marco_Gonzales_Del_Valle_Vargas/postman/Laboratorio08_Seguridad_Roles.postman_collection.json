@@ -1,0 +1,123 @@
+{
+  "info": {
+    "name": "Laboratorio 08 - Spring Security, roles y permisos",
+    "description": "Matriz de pruebas de la seccion 13 y actividad de inventario. Autenticacion HTTP Basic. Marco Antonio Gonzales del Valle Vargas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" }
+  ],
+  "item": [
+    {
+      "name": "1. Publico sin credenciales (200)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/publico/estado", "host": ["{{baseUrl}}"], "path": ["api", "publico", "estado"] }
+      }
+    },
+    {
+      "name": "2. Productos sin credenciales (401)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "3. Listar como usuario (200)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "usuario" }, { "key": "password", "value": "Usuario123*" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "4. Crear como usuario (403)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "usuario" }, { "key": "password", "value": "Usuario123*" } ] },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Monitor 27 pulgadas\",\n  \"categoria\": \"Tecnologia\",\n  \"precio\": 1250.00,\n  \"stock\": 8\n}" },
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "5. Crear como admin (201)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "admin" }, { "key": "password", "value": "Admin123*" } ] },
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "body": { "mode": "raw", "raw": "{\n  \"nombre\": \"Monitor 27 pulgadas\",\n  \"categoria\": \"Tecnologia\",\n  \"precio\": 1250.00,\n  \"stock\": 8\n}" },
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "6. Eliminar como admin (204)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "admin" }, { "key": "password", "value": "Admin123*" } ] },
+        "method": "DELETE",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos/1", "host": ["{{baseUrl}}"], "path": ["api", "productos", "1"] }
+      }
+    },
+    {
+      "name": "7. Admin con contrasena incorrecta (401)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "admin" }, { "key": "password", "value": "incorrecta" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/productos", "host": ["{{baseUrl}}"], "path": ["api", "productos"] }
+      }
+    },
+    {
+      "name": "Actividad - inventario sin credenciales (401)",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/inventario", "host": ["{{baseUrl}}"], "path": ["api", "inventario"] }
+      }
+    },
+    {
+      "name": "Actividad - inventario como usuario (200)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "usuario" }, { "key": "password", "value": "Usuario123*" } ] },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/inventario", "host": ["{{baseUrl}}"], "path": ["api", "inventario"] }
+      }
+    },
+    {
+      "name": "Actividad - ajuste como usuario (403)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "usuario" }, { "key": "password", "value": "Usuario123*" } ] },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/inventario/ajustes?productoId=1&tipo=ENTRADA&cantidad=5",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventario", "ajustes"],
+          "query": [ { "key": "productoId", "value": "1" }, { "key": "tipo", "value": "ENTRADA" }, { "key": "cantidad", "value": "5" } ]
+        }
+      }
+    },
+    {
+      "name": "Actividad - ajuste como admin (200)",
+      "request": {
+        "auth": { "type": "basic", "basic": [ { "key": "username", "value": "admin" }, { "key": "password", "value": "Admin123*" } ] },
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/inventario/ajustes?productoId=1&tipo=ENTRADA&cantidad=5",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventario", "ajustes"],
+          "query": [ { "key": "productoId", "value": "1" }, { "key": "tipo", "value": "ENTRADA" }, { "key": "cantidad", "value": "5" } ]
+        }
+      }
+    }
+  ]
+}
