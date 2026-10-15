@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,19 +22,19 @@ public record TratamientoResponse(
         String odontologoNombre,
         String nombre,
         String descripcion,
-        double precio,
+        BigDecimal precio,
         EstadoTratamiento estado,
         LocalDate fechaInicio,
         LocalDate fechaFin,
         String observaciones,
         List<SesionTratamiento> sesiones,
-        double totalPagado,
-        double saldoPendiente,
+        BigDecimal totalPagado,
+        BigDecimal saldoPendiente,
         LocalDateTime fechaRegistro) {
 
     /** Convierte el modelo interno en la respuesta que ve el cliente. */
     public static TratamientoResponse desde(Tratamiento tratamiento, String pacienteNombre,
-            String odontologoNombre, double totalPagado, double saldoPendiente) {
+            String odontologoNombre, BigDecimal totalPagado, BigDecimal saldoPendiente) {
 
         return new TratamientoResponse(
                 tratamiento.getId(),

@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -9,8 +10,8 @@ import java.util.List;
 public record EstadoCuentaResponse(
         Long pacienteId,
         String pacienteNombre,
-        double totalTratamientos,
-        double totalPagado,
-        double saldoPendiente,
+        BigDecimal totalTratamientos,
+        BigDecimal totalPagado,
+        BigDecimal saldoPendiente,
         List<TratamientoResponse> tratamientos) {
 }

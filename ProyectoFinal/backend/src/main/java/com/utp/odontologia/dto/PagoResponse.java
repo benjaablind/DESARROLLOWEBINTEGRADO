@@ -1,5 +1,6 @@
 package com.utp.odontologia.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.utp.odontologia.model.MetodoPago;
@@ -15,7 +16,7 @@ public record PagoResponse(
         String tratamientoNombre,
         Long pacienteId,
         String pacienteNombre,
-        double monto,
+        BigDecimal monto,
         MetodoPago metodo,
         LocalDateTime fecha,
         String comprobante,

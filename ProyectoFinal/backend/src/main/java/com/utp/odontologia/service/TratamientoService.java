@@ -1,10 +1,12 @@
 package com.utp.odontologia.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.utp.odontologia.dto.SesionEstadoRequest;
 import com.utp.odontologia.dto.SesionRequest;
@@ -28,6 +30,7 @@ import com.utp.odontologia.repository.UsuarioRepository;
  * saldo pendiente a partir de los pagos registrados.
  */
 @Service
+@Transactional
 public class TratamientoService {
 
     private final TratamientoRepository tratamientoRepository;
@@ -52,6 +55,7 @@ public class TratamientoService {
      * @param estado      estado exacto del tratamiento; puede ser null
      * @param soloActivos true para excluir los completados y cancelados; puede ser null
      */
+    @Transactional(readOnly = true)
     public List<TratamientoResponse> listar(Long pacienteId, EstadoTratamiento estado,
             Boolean soloActivos) {
 
@@ -67,12 +71,14 @@ public class TratamientoService {
     }
 
     /** Busca la entidad tratamiento por id o falla con 404. */
+    @Transactional(readOnly = true)
     public Tratamiento buscarPorId(Long id) {
         return tratamientoRepository.buscarPorId(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("tratamiento", id));
     }
 
     /** Devuelve la vista completa de un tratamiento, o falla con 404. */
+    @Transactional(readOnly = true)
     public TratamientoResponse detalle(Long id) {
         return aRespuesta(buscarPorId(id));
     }
@@ -182,25 +188,29 @@ public class TratamientoService {
     }
 
     /** Suma de los pagos registrados contra el tratamiento, redondeada a 2 decimales. */
-    public double totalPagado(Long tratamientoId) {
-        return redondear(pagoRepository.totalPagadoDeTratamiento(tratamientoId));
+    @Transactional(readOnly = true)
+    public BigDecimal totalPagado(Long tratamientoId) {
+        return Montos.redondear(pagoRepository.totalPagadoDeTratamiento(tratamientoId));
     }
 
     /** Precio menos lo pagado; nunca devuelve un valor negativo. */
-    public double saldoPendiente(Long tratamientoId) {
+    @Transactional(readOnly = true)
+    public BigDecimal saldoPendiente(Long tratamientoId) {
         Tratamiento tratamiento = buscarPorId(tratamientoId);
-        return redondear(Math.max(0, tratamiento.getPrecio() - totalPagado(tratamientoId)));
+        return Montos.saldo(tratamiento.getPrecio(), totalPagado(tratamientoId));
     }
 
     /** Cantidad de tratamientos activos. Sirve al tablero de indicadores. */
+    @Transactional(readOnly = true)
     public long contarActivos() {
         return tratamientoRepository.listarActivos().size();
     }
 
     /** Arma la respuesta enriquecida con nombres y con el resumen economico. */
+    @Transactional(readOnly = true)
     public TratamientoResponse aRespuesta(Tratamiento tratamiento) {
-        double pagado = redondear(pagoRepository.totalPagadoDeTratamiento(tratamiento.getId()));
-        double saldo = redondear(Math.max(0, tratamiento.getPrecio() - pagado));
+        BigDecimal pagado = totalPagado(tratamiento.getId());
+        BigDecimal saldo = Montos.saldo(tratamiento.getPrecio(), pagado);
 
         return TratamientoResponse.desde(tratamiento,
                 nombreDePaciente(tratamiento.getPacienteId()),
@@ -239,7 +249,7 @@ public class TratamientoService {
         tratamiento.setOdontologoId(request.odontologoId());
         tratamiento.setNombre(request.nombre());
         tratamiento.setDescripcion(request.descripcion());
-        tratamiento.setPrecio(request.precio());
+        tratamiento.setPrecio(Montos.redondear(request.precio()));
         tratamiento.setFechaInicio(request.fechaInicio());
         tratamiento.setObservaciones(request.observaciones());
     }
@@ -280,10 +290,5 @@ public class TratamientoService {
         return usuarioRepository.buscarPorId(odontologoId)
                 .map(Usuario::getNombreCompleto)
                 .orElse(null);
-    }
-
-    /** Redondeo monetario a 2 decimales, comun a todos los importes del modulo. */
-    private double redondear(double valor) {
-        return Math.round(valor * 100.0) / 100.0;
     }
 }
