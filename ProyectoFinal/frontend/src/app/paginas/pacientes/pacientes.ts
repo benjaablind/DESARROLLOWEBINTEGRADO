@@ -11,6 +11,7 @@ import {
 import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
+import { AuthService } from '../../core/services/auth.service';
 import { PacienteService } from '../../core/services/paciente.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { ErrorApi } from '../../core/models/comun.model';
@@ -65,6 +66,10 @@ export class PacientesComponent {
   private readonly fb = inject(FormBuilder);
   private readonly pacientes = inject(PacienteService);
   private readonly notificaciones = inject(NotificacionService);
+  private readonly auth = inject(AuthService);
+
+  /** El asistente solo consulta: no registra, edita ni elimina pacientes. */
+  protected readonly puedeModificar = this.auth.puedeModificarPacientesYCitas;
 
   /* ------------------------------ Listado ------------------------------- */
 

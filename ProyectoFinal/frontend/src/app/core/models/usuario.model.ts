@@ -51,6 +51,15 @@ export interface PermisosResponse {
   permisos: string[];
 }
 
+/**
+ * Odontologo para los selectores de citas, tratamientos, historias y odontograma.
+ * GET /api/usuarios/odontologos: cualquier usuario autenticado puede pedirlo.
+ */
+export interface Odontologo {
+  id: number;
+  nombreCompleto: string;
+}
+
 /* ------------------------------ Autenticacion ---------------------------- */
 
 export interface LoginRequest {
@@ -58,8 +67,12 @@ export interface LoginRequest {
   password: string;
 }
 
+/** Respuesta de POST /api/auth/login: un JWT que se envia en cada peticion. */
 export interface LoginResponse {
-  autenticado: boolean;
+  /** Siempre "Bearer". */
+  tokenType: string;
+  accessToken: string;
+  /** Segundos de vida del token (60 minutos). */
+  expiresInSeconds: number;
   usuario: Usuario;
-  mensaje: string;
 }

@@ -9,6 +9,7 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
+import { AuthService } from '../../core/services/auth.service';
 import { CitaService } from '../../core/services/cita.service';
 import { PacienteService } from '../../core/services/paciente.service';
 import { UsuarioService } from '../../core/services/usuario.service';
@@ -22,7 +23,7 @@ import {
   ErrorApi,
   EstadoCita,
   PacienteResumen,
-  Usuario,
+  Odontologo,
 } from '../../core/models';
 
 /** Primera y ultima hora que dibuja la linea de tiempo de la agenda. */
@@ -79,12 +80,16 @@ export class CitasComponent {
   private readonly usuarioService = inject(UsuarioService);
   private readonly notificaciones = inject(NotificacionService);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
+
+  /** El asistente consulta la agenda pero no agenda ni cambia citas. */
+  protected readonly puedeModificar = this.auth.puedeModificarPacientesYCitas;
 
   /* ------------------------------- Catalogos ------------------------------ */
 
   protected readonly estadosCita = ESTADOS_CITA;
   protected readonly pacientes = signal<PacienteResumen[]>([]);
-  protected readonly odontologos = signal<Usuario[]>([]);
+  protected readonly odontologos = signal<Odontologo[]>([]);
 
   /* --------------------------------- Estado ------------------------------- */
 

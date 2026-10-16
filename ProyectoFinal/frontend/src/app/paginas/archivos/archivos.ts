@@ -284,8 +284,7 @@ export class ArchivosComponent {
       return;
     }
 
-    const usuario = this.auth.usuarioActual();
-    if (!usuario) {
+    if (!this.auth.sesionVigente()) {
       this.errorSubida.set('Su sesión expiró. Vuelva a iniciar sesión para subir archivos.');
       return;
     }
@@ -293,10 +292,10 @@ export class ArchivosComponent {
     const v = this.formularioSubida.getRawValue();
     const pacienteId = Number(v.pacienteId);
 
+    // Quién sube el archivo lo toma el backend del token (no se envía usuarioId).
     const datos = this.archivos.construirFormData({
       archivo,
       pacienteId,
-      usuarioId: usuario.id,
       tipo: v.tipo,
       descripcion: v.descripcion.trim() || null,
     });

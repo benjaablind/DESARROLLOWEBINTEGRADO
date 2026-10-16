@@ -30,7 +30,8 @@ export class ArchivoService {
 
   /**
    * POST /api/archivos con multipart/form-data.
-   * El FormData debe traer al menos: archivo (File), pacienteId, usuarioId y tipo.
+   * El FormData debe traer al menos: archivo (File), pacienteId y tipo.
+   * Quien sube el archivo lo toma el backend del token, no se envia.
    */
   subir(datos: FormData): Observable<Archivo> {
     return this.api.postFormData<Archivo>(this.ruta, datos);
@@ -42,7 +43,6 @@ export class ArchivoService {
   construirFormData(entrada: {
     archivo: File;
     pacienteId: number;
-    usuarioId: number;
     tipo: TipoArchivo;
     descripcion?: string | null;
     historiaClinicaId?: number | null;
@@ -50,7 +50,6 @@ export class ArchivoService {
     const datos = new FormData();
     datos.append('archivo', entrada.archivo, entrada.archivo.name);
     datos.append('pacienteId', String(entrada.pacienteId));
-    datos.append('usuarioId', String(entrada.usuarioId));
     datos.append('tipo', entrada.tipo);
     if (entrada.descripcion) {
       datos.append('descripcion', entrada.descripcion);

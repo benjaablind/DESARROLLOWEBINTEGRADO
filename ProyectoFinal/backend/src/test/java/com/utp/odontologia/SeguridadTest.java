@@ -222,6 +222,24 @@ class SeguridadTest {
                     .header(HttpHeaders.AUTHORIZATION, bearer("rdiaz", "rdiaz123")))
                     .andExpect(status().isForbidden());
         }
+
+        @Test
+        @DisplayName("Lista los odontologos para agendar, solo con id y nombre")
+        void listaOdontologosParaAgendar() throws Exception {
+            mockMvc.perform(get("/api/usuarios/odontologos")
+                    .header(HttpHeaders.AUTHORIZATION, bearer("rdiaz", "rdiaz123")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].nombreCompleto").exists())
+                    .andExpect(jsonPath("$[0].email").doesNotExist())
+                    .andExpect(jsonPath("$[0].usuario").doesNotExist());
+        }
+
+        @Test
+        void sigueSinAdministrarUsuarios() throws Exception {
+            mockMvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, bearer("rdiaz", "rdiaz123")))
+                    .andExpect(status().isForbidden());
+        }
     }
 
     @Nested

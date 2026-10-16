@@ -71,7 +71,7 @@ Leer es `GET`; escribir es `POST`, `PUT`, `PATCH` o `DELETE`. La matriz es la qu
 | Reportes | leer | solo el historial clínico | leer, salvo el historial clínico | — |
 | Dashboard, perfil | leer | leer | leer | leer |
 
-Excepciones: cualquier usuario autenticado puede cambiar **su propia** contraseña y ver **sus propios** permisos. El historial consolidado de un paciente (`/api/reportes/historial/{id}`) incluye consultas clínicas, por eso exige acceso clínico.
+Excepciones: cualquier usuario autenticado puede cambiar **su propia** contraseña, ver **sus propios** permisos y listar los odontólogos activos (`/api/usuarios/odontologos`, solo id y nombre). El historial consolidado de un paciente (`/api/reportes/historial/{id}`) incluye consultas clínicas, por eso exige acceso clínico.
 
 ## Usuarios y roles — Integrante 1
 
@@ -86,6 +86,7 @@ Excepciones: cualquier usuario autenticado puede cambiar **su propia** contrase�
 | PATCH | `/api/usuarios/{id}/desactivar` | Baja lógica |
 | DELETE | `/api/usuarios/{id}` | Elimina |
 | GET | `/api/usuarios/{id}/permisos` | Permisos según el rol. El propio usuario o un administrador |
+| GET | `/api/usuarios/odontologos` | Odontólogos activos, solo `id` y `nombreCompleto`. Cualquier usuario autenticado: lo usan los selectores para agendar citas y registrar tratamientos |
 
 Roles: `ADMINISTRADOR`, `ODONTOLOGO`, `RECEPCIONISTA`, `ASISTENTE`. Las contraseñas se guardan solo como hash BCrypt y nunca aparecen en las respuestas.
 

@@ -26,7 +26,9 @@
       </button>
     </div>
 
-    <button type="button" class="btn btn-primario" (click)="abrirNueva()">Nueva cita</button>
+    @if (puedeModificar()) {
+      <button type="button" class="btn btn-primario" (click)="abrirNueva()">Nueva cita</button>
+    }
   </div>
 </div>
 
@@ -129,9 +131,11 @@
         <div class="estado-vacio">
           <strong>Sin citas para este dia</strong>
           <p class="texto-suave">No hay citas agendadas el {{ diaLegible() }}.</p>
-          <button type="button" class="btn btn-primario btn-sm" (click)="abrirNueva()">
-            Agendar una cita
-          </button>
+          @if (puedeModificar()) {
+            <button type="button" class="btn btn-primario btn-sm" (click)="abrirNueva()">
+              Agendar una cita
+            </button>
+          }
         </div>
       }
 
@@ -183,7 +187,11 @@
                     </span>
                   </td>
                   <td class="celda-acciones">
-                    <ng-container [ngTemplateOutlet]="acciones" [ngTemplateOutletContext]="{ $implicit: cita }"></ng-container>
+                    @if (puedeModificar()) {
+                      <ng-container [ngTemplateOutlet]="acciones" [ngTemplateOutletContext]="{ $implicit: cita }"></ng-container>
+                    } @else {
+                      <span class="texto-suave texto-pequeno">Solo consulta</span>
+                    }
                   </td>
                 </tr>
               }
@@ -275,7 +283,11 @@
                   </span>
                 </td>
                 <td class="celda-acciones">
-                  <ng-container [ngTemplateOutlet]="acciones" [ngTemplateOutletContext]="{ $implicit: cita }"></ng-container>
+                  @if (puedeModificar()) {
+                    <ng-container [ngTemplateOutlet]="acciones" [ngTemplateOutletContext]="{ $implicit: cita }"></ng-container>
+                  } @else {
+                    <span class="texto-suave texto-pequeno">Solo consulta</span>
+                  }
                 </td>
               </tr>
             } @empty {

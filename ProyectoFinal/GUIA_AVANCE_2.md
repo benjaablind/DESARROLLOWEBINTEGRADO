@@ -10,7 +10,7 @@ La idea que tiene que quedar en la sustentación: **la API del Avance 1 no se re
 | 7 | JPQL y transacciones | `@Query` en `repository/`, `@Transactional` en `service/` |
 | 8 | Spring Security, roles y permisos | `config/SecurityConfig.java`, `security/CustomUserDetailsService.java` |
 | 9 | JWT | `config/JwtConfig.java`, `security/TokenService.java`, `controller/AuthController.java` |
-| 10 | Avance 2: integración | Esta guía, la colección de Postman y las 176 pruebas |
+| 10 | Avance 2: integración | Esta guía, la colección de Postman, las 178 pruebas y el frontend con JWT |
 
 ---
 
@@ -31,7 +31,7 @@ La idea que tiene que quedar en la sustentación: **la API del Avance 1 no se re
 3. **Con token, según el rol.** *Login correcto* → cualquier consulta da 200. *Asistente intenta registrar un paciente* → 403.
 4. **Cada integrante, su módulo** (sección siguiente).
 5. **La persistencia.** Detener el backend, volver a iniciarlo y repetir una consulta: los datos siguen ahí. En el Avance 1 se perdían.
-6. **Cierre.** *Run collection*: 73 solicitudes, 84 verificaciones, 0 fallas. Luego `.\mvnw.cmd test`: 176 pruebas, 0 fallos.
+6. **Cierre.** *Run collection*: 73 solicitudes, 84 verificaciones, 0 fallas. Luego `.\mvnw.cmd test`: 178 pruebas, 0 fallos.
 
 ---
 
@@ -129,12 +129,13 @@ Cada uno sigue los mismos pasos del Avance 1: **su código → su prueba → su 
 | ¿Por qué la clave del JWT va en una variable de entorno? | Con HS256 la misma clave firma y verifica: quien la tenga puede fabricar un token de administrador. |
 | ¿Cómo se cierra sesión con JWT? | El cliente descarta el token. El servidor no guarda tokens, así que sigue valiendo hasta que vence (60 minutos). |
 | ¿Por qué CSRF desactivado? | El token viaja en el encabezado `Authorization`, que el navegador no adjunta solo. CSRF explota cookies automáticas. |
-| ¿Y el frontend? | Todavía no envía el token, así que el backend le responde 401. Adaptarlo con un interceptor corresponde a las semanas 11 a 15. |
+| ¿Y el frontend? | Ya usa el JWT: un interceptor de Angular agrega `Authorization: Bearer` a cada petición, y si el backend responde 401 vuelve al login. El menú y los botones siguen la misma matriz de permisos del servidor. |
 
 ---
 
 ## Lo que queda pendiente, dicho con honestidad
 
-- **Frontend:** falta el interceptor que adjunte el token y ajustar el menú a la matriz de permisos del servidor (hoy no coinciden).
-- **Recepción y odontólogos:** para agendar, la recepcionista necesita la lista de odontólogos, pero `GET /api/usuarios` es solo del administrador. Falta un endpoint de solo lectura con odontólogos activos; hay que decidirlo en equipo.
 - **Revocar tokens:** desactivar a un usuario no invalida el token que ya tiene; vale hasta que vence.
+- **El token en el navegador:** se guarda en `localStorage`. Es lo habitual en una SPA, pero un ataque XSS podría leerlo; la alternativa es una cookie `HttpOnly`, que obliga a volver a activar la protección CSRF.
+
+Resuelto después de la primera versión del avance: el frontend ya envía el token y su menú coincide con la matriz del servidor, y la recepción tiene `GET /api/usuarios/odontologos` (solo id y nombre) para elegir al odontólogo al agendar.

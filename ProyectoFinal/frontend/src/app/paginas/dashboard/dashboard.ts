@@ -132,7 +132,9 @@ import {
         <section class="card">
           <div class="card-encabezado">
             <h2>Tratamientos activos</h2>
-            <a class="btn btn-fantasma btn-sm" routerLink="/tratamientos">Ver tratamientos</a>
+            @if (verTratamientos()) {
+              <a class="btn btn-fantasma btn-sm" routerLink="/tratamientos">Ver tratamientos</a>
+            }
           </div>
 
           @if (d.tratamientosActivosDetalle.length > 0) {
@@ -303,6 +305,12 @@ import {
 export class DashboardComponent {
   private readonly servicio = inject(DashboardService);
   private readonly auth = inject(AuthService);
+
+  /** Recepcion y el asistente ven el resumen, pero el modulo de tratamientos es clinico. */
+  protected readonly verTratamientos = computed(() => {
+    this.auth.rol();
+    return this.auth.tienePermiso('tratamientos');
+  });
 
   protected readonly datos = signal<Dashboard | null>(null);
   protected readonly cargando = signal(false);

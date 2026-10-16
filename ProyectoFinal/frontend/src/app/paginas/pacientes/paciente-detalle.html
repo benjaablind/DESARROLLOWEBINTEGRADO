@@ -42,14 +42,16 @@
     </div>
     <div class="fila">
       <a class="btn btn-secundario" routerLink="/pacientes">Volver al listado</a>
-      <button
-        type="button"
-        class="btn btn-primario"
-        (click)="abrirEdicion()"
-        [disabled]="editando()"
-      >
-        Editar antecedentes
-      </button>
+      @if (puedeEditar()) {
+        <button
+          type="button"
+          class="btn btn-primario"
+          (click)="abrirEdicion()"
+          [disabled]="editando()"
+        >
+          Editar antecedentes
+        </button>
+      }
     </div>
   </div>
 
@@ -108,7 +110,7 @@
     <div class="card">
       <div class="card-encabezado">
         <h2>Antecedentes clínicos</h2>
-        @if (!editando()) {
+        @if (!editando() && puedeEditar()) {
           <button type="button" class="btn btn-fantasma btn-sm" (click)="abrirEdicion()">
             Editar
           </button>

@@ -19,7 +19,7 @@ import {
   PIEZAS_FDI,
   PacienteResumen,
   ResumenOdontograma,
-  Usuario,
+  Odontologo,
 } from '../../core/models';
 
 /** Numeracion FDI de la denticion decidua, agrupada por cuadrante. */
@@ -69,7 +69,7 @@ export class OdontogramaComponent {
 
   protected readonly estadosPieza = ESTADOS_PIEZA;
   protected readonly pacientes = signal<PacienteResumen[]>([]);
-  protected readonly odontologos = signal<Usuario[]>([]);
+  protected readonly odontologos = signal<Odontologo[]>([]);
 
   /* --------------------------------- Estado ------------------------------- */
 

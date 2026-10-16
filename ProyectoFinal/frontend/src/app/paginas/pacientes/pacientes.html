@@ -3,12 +3,14 @@
     <h1>Pacientes</h1>
     <span class="subtitulo">Registro, búsqueda y ficha clínica de los pacientes</span>
   </div>
-  <button type="button" class="btn btn-primario" (click)="abrirCreacion()">
-    <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-btn">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-    Nuevo paciente
-  </button>
+  @if (puedeModificar()) {
+    <button type="button" class="btn btn-primario" (click)="abrirCreacion()">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="icono-btn">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+      Nuevo paciente
+    </button>
+  }
 </div>
 
 <!-- ------------------------------- Filtros ------------------------------- -->
@@ -288,29 +290,31 @@
                   >
                     Ver ficha
                   </a>
-                  <button
-                    type="button"
-                    class="btn btn-secundario btn-sm"
-                    (click)="abrirEdicion(paciente)"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-secundario btn-sm"
-                    (click)="alternarEstado(paciente)"
-                    [disabled]="accionEnCurso() === paciente.id"
-                  >
-                    {{ paciente.estado === 'ACTIVO' ? 'Desactivar' : 'Activar' }}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-peligro btn-sm"
-                    (click)="pedirBaja(paciente)"
-                    [disabled]="accionEnCurso() === paciente.id"
-                  >
-                    Eliminar
-                  </button>
+                  @if (puedeModificar()) {
+                    <button
+                      type="button"
+                      class="btn btn-secundario btn-sm"
+                      (click)="abrirEdicion(paciente)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-secundario btn-sm"
+                      (click)="alternarEstado(paciente)"
+                      [disabled]="accionEnCurso() === paciente.id"
+                    >
+                      {{ paciente.estado === 'ACTIVO' ? 'Desactivar' : 'Activar' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-peligro btn-sm"
+                      (click)="pedirBaja(paciente)"
+                      [disabled]="accionEnCurso() === paciente.id"
+                    >
+                      Eliminar
+                    </button>
+                  }
                 </div>
               </td>
             </tr>

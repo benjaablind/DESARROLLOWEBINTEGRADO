@@ -19,6 +19,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.utp.odontologia.dto.ActualizarUsuarioRequest;
 import com.utp.odontologia.dto.CambiarPasswordRequest;
+import com.utp.odontologia.dto.OdontologoResponse;
 import com.utp.odontologia.dto.PermisosResponse;
 import com.utp.odontologia.dto.UsuarioRequest;
 import com.utp.odontologia.dto.UsuarioResponse;
@@ -126,5 +127,19 @@ public class UsuarioController {
         return ResponseEntity.ok(new PermisosResponse(
                 usuario.getRol(),
                 usuarioService.permisosDe(usuario.getRol())));
+    }
+
+    /**
+     * GET /api/usuarios/odontologos : odontologos activos, solo id y nombre.
+     * Lo usa cualquier usuario autenticado para llenar los selectores de citas,
+     * tratamientos, historias y odontograma (ver SecurityConfig).
+     */
+    @GetMapping("/odontologos")
+    public ResponseEntity<List<OdontologoResponse>> listarOdontologos() {
+        List<OdontologoResponse> respuesta = usuarioService.listar(Rol.ODONTOLOGO, true).stream()
+                .map(OdontologoResponse::desde)
+                .toList();
+
+        return ResponseEntity.ok(respuesta);
     }
 }

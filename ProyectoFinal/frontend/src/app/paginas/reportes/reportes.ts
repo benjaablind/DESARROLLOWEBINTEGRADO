@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 
+import { AuthService } from '../../core/services/auth.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PacienteService } from '../../core/services/paciente.service';
 import { ReporteService } from '../../core/services/reporte.service';
@@ -77,17 +78,25 @@ export class ReportesComponent implements OnInit {
   private readonly reporteService = inject(ReporteService);
   private readonly pacienteService = inject(PacienteService);
   private readonly notificaciones = inject(NotificacionService);
+  private readonly auth = inject(AuthService);
 
   /* ------------------------------- Catalogos ----------------------------- */
 
-  protected readonly pestanas: OpcionPestana[] = [
-    { clave: 'pacientes', etiqueta: 'Pacientes' },
-    { clave: 'citas', etiqueta: 'Citas' },
-    { clave: 'tratamientos', etiqueta: 'Tratamientos' },
-    { clave: 'ingresos', etiqueta: 'Ingresos' },
-    { clave: 'pendientes', etiqueta: 'Pagos pendientes' },
-    { clave: 'historial', etiqueta: 'Historial del paciente' },
-  ];
+  /**
+   * Solo los reportes que el rol puede ver: el historial consolidado es
+   * clinico (administrador y odontologo) y los demas son de gestion
+   * (administrador y recepcion). El backend responde 403 a los demas.
+   */
+  protected readonly pestanas: OpcionPestana[] = (
+    [
+      { clave: 'pacientes', etiqueta: 'Pacientes' },
+      { clave: 'citas', etiqueta: 'Citas' },
+      { clave: 'tratamientos', etiqueta: 'Tratamientos' },
+      { clave: 'ingresos', etiqueta: 'Ingresos' },
+      { clave: 'pendientes', etiqueta: 'Pagos pendientes' },
+      { clave: 'historial', etiqueta: 'Historial del paciente' },
+    ] satisfies OpcionPestana[]
+  ).filter((p) => this.auth.puedeVerReporte(p.clave));
 
   protected readonly etiquetasEstadoCita = ETIQUETAS_ESTADO_CITA;
   protected readonly badgesEstadoCita = BADGE_ESTADO_CITA;
@@ -100,7 +109,7 @@ export class ReportesComponent implements OnInit {
 
   /* --------------------------------- Estado ------------------------------ */
 
-  protected readonly pestana = signal<PestanaReporte>('pacientes');
+  protected readonly pestana = signal<PestanaReporte>(this.pestanas[0]?.clave ?? 'pacientes');
   protected readonly cargando = signal(false);
   protected readonly error = signal<string | null>(null);
 

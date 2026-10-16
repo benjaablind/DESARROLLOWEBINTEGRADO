@@ -23,7 +23,7 @@ import {
   SesionTratamiento,
   Tratamiento,
   TratamientoRequest,
-  Usuario,
+  Odontologo,
 } from '../../core/models';
 
 /** Estados en los que el tratamiento ya no admite cambios. */
@@ -61,7 +61,7 @@ export class TratamientosComponent implements OnInit {
   protected readonly badgesEstado = BADGE_ESTADO_TRATAMIENTO;
 
   protected readonly pacientes = signal<PacienteResumen[]>([]);
-  protected readonly odontologos = signal<Usuario[]>([]);
+  protected readonly odontologos = signal<Odontologo[]>([]);
 
   /* --------------------------------- Estado ------------------------------ */
 

@@ -117,7 +117,7 @@ npm start
 
 Queda disponible en `http://localhost:4200` y consume la API del puerto 8080.
 
-> **Pendiente para las semanas 11 a 15:** el frontend todavía no envía el token. Mientras no se le agregue un interceptor que adjunte `Authorization: Bearer`, el backend le responde 401. Por ahora la API se prueba con Postman.
+El frontend usa el mismo JWT que Postman. Al iniciar sesión guarda el token, y el interceptor `core/interceptors/auth.interceptor.ts` lo envía como `Authorization: Bearer` en cada petición. Si el token vence (60 minutos) o el backend lo rechaza, vuelve al login. El menú, las pestañas de reportes y los botones de escritura siguen la misma matriz de permisos que aplica el servidor.
 
 Usuarios de demostración, uno por rol:
 
@@ -137,7 +137,7 @@ Desde `backend/`:
 .\mvnw.cmd test  # PowerShell
 ```
 
-Son 176 pruebas de integración con JUnit 5 y MockMvc. No necesitan MySQL: usan una base H2 en memoria, en modo compatible con MySQL.
+Son 178 pruebas de integración con JUnit 5 y MockMvc. No necesitan MySQL: usan una base H2 en memoria, en modo compatible con MySQL.
 
 - Las 156 originales, una clase por módulo, ahora corren sobre la base de datos.
 - `TransaccionesYPersistenciaTest` (3): reprogramar una cita hace rollback completo si falla el segundo paso, y borrar un paciente con historial responde 409.

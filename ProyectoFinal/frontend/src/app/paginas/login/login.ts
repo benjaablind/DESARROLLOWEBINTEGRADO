@@ -22,7 +22,12 @@ export class LoginComponent {
   private readonly notificaciones = inject(NotificacionService);
 
   protected readonly cargando = signal(false);
-  protected readonly errorApi = signal<string | null>(null);
+  /** El interceptor redirige aqui con motivo=expirada cuando el backend rechaza el token. */
+  protected readonly errorApi = signal<string | null>(
+    this.ruta.snapshot.queryParamMap.get('motivo') === 'expirada'
+      ? 'Su sesion expiro. Vuelva a iniciar sesion.'
+      : null,
+  );
   protected readonly verPassword = signal(false);
 
   protected readonly formulario = this.fb.nonNullable.group({
@@ -60,15 +65,11 @@ export class LoginComponent {
     this.cargando.set(true);
     this.formulario.disable();
 
+    // Credenciales incorrectas llegan como 401 y caen en error().
     this.auth.login(usuario, password).subscribe({
       next: (respuesta) => {
         this.cargando.set(false);
         this.formulario.enable();
-
-        if (!respuesta.autenticado) {
-          this.errorApi.set(respuesta.mensaje || 'Usuario o contrasena incorrectos');
-          return;
-        }
 
         this.notificaciones.exito(`Bienvenido, ${respuesta.usuario.nombres}`);
         const retorno = this.ruta.snapshot.queryParamMap.get('retorno');

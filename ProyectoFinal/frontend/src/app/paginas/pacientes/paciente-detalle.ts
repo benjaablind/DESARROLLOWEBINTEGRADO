@@ -11,6 +11,7 @@ import {
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../../core/services/auth.service';
 import { PacienteService } from '../../core/services/paciente.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { ErrorApi } from '../../core/models/comun.model';
@@ -94,8 +95,13 @@ export class PacienteDetalleComponent {
   private readonly fb = inject(FormBuilder);
   private readonly pacientes = inject(PacienteService);
   private readonly notificaciones = inject(NotificacionService);
+  private readonly auth = inject(AuthService);
 
-  protected readonly enlaces = ENLACES;
+  /** Solo los modulos que el rol puede abrir ("/historias" -> "historias"). */
+  protected readonly enlaces = ENLACES.filter((e) => this.auth.tienePermiso(e.ruta.slice(1)));
+
+  /** El asistente consulta la ficha pero no edita los antecedentes. */
+  protected readonly puedeEditar = this.auth.puedeModificarPacientesYCitas;
 
   protected readonly paciente = signal<Paciente | null>(null);
   protected readonly cargando = signal(false);

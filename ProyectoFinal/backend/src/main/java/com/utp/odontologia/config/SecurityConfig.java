@@ -100,11 +100,11 @@ public class SecurityConfig {
                         .requestMatchers(POST, "/api/auth/login").permitAll()
 
                         // Usuarios: administracion exclusiva del ADMINISTRADOR.
-                        // Excepciones: cada uno puede cambiar su contrasena y ver
-                        // sus permisos; el control "es el mismo usuario" esta en
-                        // UsuarioController con @PreAuthorize.
+                        // Excepciones: cada uno cambia su contrasena y ve sus permisos
+                        // (@PreAuthorize en UsuarioController), y todos pueden listar
+                        // los odontologos (solo id y nombre) para agendar.
                         .requestMatchers(PATCH, "/api/usuarios/*/password").authenticated()
-                        .requestMatchers(GET, "/api/usuarios/*/permisos").authenticated()
+                        .requestMatchers(GET, "/api/usuarios/*/permisos", "/api/usuarios/odontologos").authenticated()
                         .requestMatchers("/api/usuarios/**").hasRole(ADMINISTRADOR)
 
                         // Pacientes y citas: todos consultan; el asistente no modifica.

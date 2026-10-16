@@ -14,7 +14,7 @@ import {
   HistoriaClinica,
   HistoriaClinicaRequest,
   PacienteResumen,
-  Usuario,
+  Odontologo,
 } from '../../core/models';
 
 /** Historia clinica de un paciente: linea de tiempo de sus atenciones. */
@@ -38,7 +38,7 @@ export class HistoriasComponent {
   /* ------------------------------- Catalogos ------------------------------ */
 
   protected readonly pacientes = signal<PacienteResumen[]>([]);
-  protected readonly odontologos = signal<Usuario[]>([]);
+  protected readonly odontologos = signal<Odontologo[]>([]);
   protected readonly citasDelPaciente = signal<Cita[]>([]);
 
   /* --------------------------------- Estado ------------------------------- */

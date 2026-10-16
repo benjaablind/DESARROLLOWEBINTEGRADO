@@ -5,6 +5,7 @@ import { ApiService } from './api.service';
 import {
   ActualizarUsuarioRequest,
   CambiarPasswordRequest,
+  Odontologo,
   PermisosResponse,
   Rol,
   Usuario,
@@ -22,9 +23,12 @@ export class UsuarioService {
     return this.api.get<Usuario[]>(this.ruta, { rol, activo });
   }
 
-  /** Atajo util para poblar selects de odontologos. */
-  listarOdontologos(): Observable<Usuario[]> {
-    return this.listar('ODONTOLOGO', true);
+  /**
+   * GET /api/usuarios/odontologos: odontologos activos (id y nombre) para los
+   * selects. A diferencia de listar(), no exige ser administrador.
+   */
+  listarOdontologos(): Observable<Odontologo[]> {
+    return this.api.get<Odontologo[]>(`${this.ruta}/odontologos`);
   }
 
   buscarPorId(id: number): Observable<Usuario> {
