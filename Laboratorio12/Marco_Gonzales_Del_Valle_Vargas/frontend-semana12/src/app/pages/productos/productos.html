@@ -1,0 +1,22 @@
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">CATÁLOGO</p>
+    <h1>Productos</h1>
+  </div>
+  <div class="counters">
+    <p>Favoritos seleccionados: <strong class="favoritos">{{ favoritos() }}</strong></p>
+    <p>En comparación: <strong class="comparacion">{{ totalComparacion() }}</strong></p>
+  </div>
+</section>
+
+<div class="grid">
+  @for (producto of productos(); track producto.id) {
+    <app-producto-card
+      [producto]="producto"
+      [destacado]="esDestacado(producto.precio)"
+      (verDetalle)="irDetalle($event)"
+      (favorito)="registrarFavorito($event)"
+      (agregarComparacion)="agregarComparacion($event)"
+    />
+  }
+</div>

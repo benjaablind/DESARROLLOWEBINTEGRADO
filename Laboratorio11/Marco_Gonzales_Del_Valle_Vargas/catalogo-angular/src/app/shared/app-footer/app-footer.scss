@@ -1,0 +1,18 @@
+@use '../../../styles/tokens' as *;
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  width: min(1100px, 92%);
+  margin: 0 auto 32px;
+  padding: 18px 0 0;
+  border-top: 1px solid #d8e0ea;
+  color: $muted;
+  font-size: 0.9rem;
+
+  @include mobile {
+    flex-direction: column;
+  }
+}

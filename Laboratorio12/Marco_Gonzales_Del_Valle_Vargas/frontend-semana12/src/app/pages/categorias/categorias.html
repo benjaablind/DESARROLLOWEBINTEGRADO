@@ -1,0 +1,19 @@
+<section class="page-heading">
+  <p class="eyebrow">CATÁLOGO</p>
+  <h1>Categorías</h1>
+  <p class="subtitle">{{ categorias.length }} categorías únicas en el catálogo.</p>
+</section>
+
+<div class="grid">
+  @for (categoria of categorias; track categoria.nombre) {
+    <article class="categoria">
+      <h2>{{ categoria.nombre }}</h2>
+      <p class="count">{{ categoria.productos.length }} producto(s)</p>
+      <ul>
+        @for (producto of categoria.productos; track producto.id) {
+          <li><a [routerLink]="['/productos', producto.id]">{{ producto.nombre }}</a></li>
+        }
+      </ul>
+    </article>
+  }
+</div>

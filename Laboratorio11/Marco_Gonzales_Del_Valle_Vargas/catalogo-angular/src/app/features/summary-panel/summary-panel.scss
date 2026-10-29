@@ -1,0 +1,25 @@
+@use '../../../styles/tokens' as *;
+
+.summary {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border-radius: $radius-md;
+  background: $ok-bg;
+  border: 1px solid rgba($teal, 0.35);
+
+  h2 {
+    margin: 0 0 6px;
+    color: $navy;
+    font-size: 1.15rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  &__note {
+    margin-top: 4px !important;
+    color: $muted;
+    font-size: 0.9rem;
+  }
+}

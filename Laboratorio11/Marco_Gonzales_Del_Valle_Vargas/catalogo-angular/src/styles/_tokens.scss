@@ -1,0 +1,45 @@
+// Tokens de diseno compartidos (extension recomendada 12.2: partial SCSS con @use).
+// Cada componente los importa con: @use '<ruta>/styles/tokens' as *;
+// El guion bajo del nombre (_tokens) indica que es un parcial: no genera CSS
+// por si solo, solo aporta variables y mixins a quien lo usa.
+
+// Colores
+$navy: #0d2042;
+$blue: #14569b;
+$teal: #008491;
+$surface: #f6f8fb;
+$white: #ffffff;
+$text: #243044;
+$muted: #5d6b80;
+$danger: #b23a3a;
+$ok-bg: #e3f4f2;
+$danger-bg: #fbe9e9;
+
+// Medidas
+$radius-lg: 22px;
+$radius-md: 18px;
+$radius-sm: 12px;
+$breakpoint-md: 720px;
+
+// Sombra reutilizable de tarjetas y paneles.
+@mixin card-shadow {
+  box-shadow: 0 10px 26px rgba(13, 32, 66, 0.1);
+}
+
+// Pastilla de estado: color de texto y fondo como parametros.
+@mixin pill($color, $background) {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: $color;
+  background: $background;
+}
+
+// Media query de pantallas angostas.
+@mixin mobile {
+  @media (max-width: $breakpoint-md) {
+    @content;
+  }
+}

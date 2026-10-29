@@ -1,0 +1,29 @@
+.detail {
+  padding: 2.5rem;
+  border-radius: 1rem;
+  background: white;
+  border-top: 6px solid #168aad;
+  box-shadow: 0 10px 25px rgba(15, 61, 102, 0.08);
+
+  h1 {
+    margin: 0.4rem 0;
+    color: #102a43;
+  }
+
+  p {
+    color: #486581;
+  }
+
+  h2 {
+    color: #0f3d66;
+  }
+
+  a {
+    color: #0f3d66;
+    font-weight: 700;
+  }
+
+  &--vacio {
+    border-top-color: #c0392b;
+  }
+}

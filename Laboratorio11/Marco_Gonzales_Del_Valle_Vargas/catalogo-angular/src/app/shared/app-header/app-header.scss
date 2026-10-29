@@ -1,0 +1,17 @@
+@use '../../../styles/tokens' as *;
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: min(1100px, 92%);
+  margin: 20px auto 0;
+  padding: 14px 24px;
+  border-radius: 14px;
+  color: $white;
+  background: $navy;
+
+  span {
+    @include pill($white, rgba(255, 255, 255, 0.15));
+  }
+}

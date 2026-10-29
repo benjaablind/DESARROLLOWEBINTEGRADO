@@ -1,0 +1,20 @@
+.error {
+  padding: 2.5rem;
+  border-radius: 1rem;
+  background: white;
+  border-left: 6px solid #c0392b;
+
+  .eyebrow {
+    color: #c0392b;
+  }
+
+  h1 {
+    margin: 0.4rem 0;
+    color: #102a43;
+  }
+
+  a {
+    color: #0f3d66;
+    font-weight: 700;
+  }
+}

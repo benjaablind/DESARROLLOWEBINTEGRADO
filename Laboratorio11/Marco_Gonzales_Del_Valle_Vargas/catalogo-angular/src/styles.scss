@@ -1,0 +1,16 @@
+/* Estilos globales: solo lo que aplica a toda la pagina. Cada componente
+   trae sus propios estilos encapsulados en su .scss. */
+@use 'styles/tokens' as *;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  background: $surface;
+  color: $text;
+}
