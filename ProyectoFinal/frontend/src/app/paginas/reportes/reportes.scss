@@ -173,3 +173,9 @@
     text-align: left;
   }
 }
+
+/* Error del validador de rango: ocupa su propia linea bajo los filtros. */
+.rango-error {
+  flex-basis: 100%;
+  order: 10;
+}

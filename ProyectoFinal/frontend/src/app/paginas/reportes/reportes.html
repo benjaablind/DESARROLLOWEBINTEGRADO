@@ -27,14 +27,20 @@
     <form class="filtros" [formGroup]="rango" (ngSubmit)="cargar()" novalidate>
       <div class="form-campo">
         <label class="form-etiqueta" for="rp-desde">Desde</label>
-        <input id="rp-desde" type="date" formControlName="desde" (change)="marcarRangoManual()" />
+        <input id="rp-desde" type="date" formControlName="desde" (change)="marcarRangoManual()" [max]="rango.controls.hasta.value || null" />
       </div>
       <div class="form-campo">
         <label class="form-etiqueta" for="rp-hasta">Hasta</label>
-        <input id="rp-hasta" type="date" formControlName="hasta" (change)="marcarRangoManual()" />
+        <input id="rp-hasta" type="date" formControlName="hasta" (change)="marcarRangoManual()" [min]="rango.controls.desde.value || null" />
       </div>
 
       <button type="submit" class="btn btn-primario">Aplicar</button>
+
+      @if (rango.hasError('rangoInvertido') && (rango.controls.desde.touched || rango.controls.hasta.touched)) {
+        <span class="form-error rango-error" role="alert">
+          La fecha inicial no puede ser posterior a la fecha final.
+        </span>
+      }
 
       <div class="atajos">
         <button

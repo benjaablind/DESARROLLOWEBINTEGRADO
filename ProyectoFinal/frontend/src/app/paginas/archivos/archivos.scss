@@ -38,6 +38,45 @@ svg {
   cursor: pointer;
 }
 
+/* Filas del FormArray de subida: una por archivo elegido. */
+.filas-subida {
+  display: grid;
+  gap: var(--e-3);
+  margin: 0 0 var(--e-4);
+  padding: 0;
+  list-style: none;
+}
+
+.fila-subida {
+  display: grid;
+  gap: var(--e-2);
+  padding: var(--e-3) var(--e-4);
+  background: var(--c-superficie-2);
+  border: 1px solid var(--c-borde);
+  border-radius: var(--r-md);
+}
+
+.fila-subida.fila-invalida {
+  background: var(--c-peligro-suave);
+  border-color: var(--c-peligro);
+}
+
+.fila-subida-cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+}
+
+.fila-subida-nombre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--e-2);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* ------------------------------- Galeria -------------------------------- */
 
 .galeria {
