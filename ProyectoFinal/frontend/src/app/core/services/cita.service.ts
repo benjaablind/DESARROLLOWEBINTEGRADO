@@ -57,13 +57,20 @@ export class CitaService {
     return this.api.patch<Cita>(`${this.ruta}/${id}/confirmar`);
   }
 
-  /** PATCH /api/citas/{id}/asistencia : marca ATENDIDA o NO_ASISTIO. */
+  /**
+   * PATCH /api/citas/{id}/asistencia?asistio= : marca ATENDIDA o NO_ASISTIO.
+   * El controlador lee asistio con @RequestParam, por eso viaja en la URL y no en el cuerpo.
+   */
   registrarAsistencia(id: number, asistio: boolean): Observable<Cita> {
-    return this.api.patch<Cita>(`${this.ruta}/${id}/asistencia`, { asistio });
+    return this.api.patch<Cita>(`${this.ruta}/${id}/asistencia`, undefined, { asistio });
   }
 
+  /**
+   * PATCH /api/citas/{id}/cancelar?motivo= : el motivo tambien es @RequestParam.
+   * Sin motivo no se envia el parametro y el backend guarda "Cita cancelada".
+   */
   cancelar(id: number, motivo?: string): Observable<Cita> {
-    return this.api.patch<Cita>(`${this.ruta}/${id}/cancelar`, { motivo: motivo ?? null });
+    return this.api.patch<Cita>(`${this.ruta}/${id}/cancelar`, undefined, { motivo });
   }
 
   reprogramar(id: number, datos: CitaReprogramarRequest): Observable<Cita> {

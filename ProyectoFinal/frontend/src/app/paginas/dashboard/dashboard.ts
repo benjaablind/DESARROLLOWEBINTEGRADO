@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService } from '../../core/services/dashboard.service';
@@ -334,17 +335,16 @@ export class DashboardComponent {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.servicio.obtener().subscribe({
-      next: (respuesta) => {
-        this.datos.set(respuesta);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.datos.set(null);
-        this.error.set(fallo?.mensaje ?? 'No se pudieron cargar los indicadores');
-        this.cargando.set(false);
-      },
-    });
+    this.servicio
+      .obtener()
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: (respuesta) => this.datos.set(respuesta),
+        error: (fallo: ErrorApi) => {
+          this.datos.set(null);
+          this.error.set(fallo?.mensaje ?? 'No se pudieron cargar los indicadores');
+        },
+      });
   }
 
   /* ------------------------------- Formato ------------------------------- */
