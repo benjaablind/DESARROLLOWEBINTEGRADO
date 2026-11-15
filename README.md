@@ -10,6 +10,7 @@ Aplicación web de tres capas: API REST con Spring Boot, base de datos MySQL con
 - [Documentación de la API](ProyectoFinal/backend/DOCUMENTACION_API.md)
 - [Colección de Postman](ProyectoFinal/postman/)
 - [Guía del Avance 2 (semanas 6 a 10)](ProyectoFinal/GUIA_AVANCE_2.md)
+- [Guía del Avance 3 (semanas 11 a 15)](ProyectoFinal/GUIA_AVANCE_3.md)
 - [Guía de sustentación del Avance 1](ProyectoFinal/GUIA_SUSTENTACION.md)
 
 Para levantar la API (requiere MySQL con la base creada por `backend/sql/01_crear_base_datos.sql`):
