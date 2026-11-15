@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
@@ -21,6 +22,11 @@ import {
   ResumenOdontograma,
   Odontologo,
 } from '../../core/models';
+import {
+  LONGITUDES_ODONTOGRAMA,
+  estadoPiezaValido,
+  piezaFdi,
+} from '../../core/validators/odontograma.validators';
 
 /** Numeracion FDI de la denticion decidua, agrupada por cuadrante. */
 const PIEZAS_FDI_DECIDUAS = {
@@ -90,13 +96,21 @@ export class OdontogramaComponent {
 
   /* ------------------------------ Formulario ------------------------------ */
 
+  /** Longitudes maximas, para validar y para los mensajes de error. */
+  protected readonly maximos = LONGITUDES_ODONTOGRAMA;
+
+  /**
+   * Refleja OdontogramaRegistroRequest. El numero de pieza no se escribe: lo
+   * fija la pieza elegida en el mapa, pero se valida igual que en el servidor.
+   */
   protected readonly formulario = this.fb.nonNullable.group({
+    numeroPieza: [null as number | null, [Validators.required, piezaFdi()]],
     odontologoId: ['', Validators.required],
-    estado: ['' as EstadoPieza | '', Validators.required],
-    superficie: [''],
-    diagnostico: [''],
-    tratamiento: [''],
-    observaciones: [''],
+    estado: ['' as EstadoPieza | '', [Validators.required, estadoPiezaValido()]],
+    superficie: ['', Validators.maxLength(LONGITUDES_ODONTOGRAMA.superficie)],
+    diagnostico: ['', Validators.maxLength(LONGITUDES_ODONTOGRAMA.diagnostico)],
+    tratamiento: ['', Validators.maxLength(LONGITUDES_ODONTOGRAMA.tratamiento)],
+    observaciones: ['', Validators.maxLength(LONGITUDES_ODONTOGRAMA.observaciones)],
   });
 
   constructor() {
@@ -206,17 +220,17 @@ export class OdontogramaComponent {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.odontogramaService.obtenerActual(id).subscribe({
-      next: (datos) => {
-        this.odontograma.set(datos);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.odontograma.set(null);
-        this.cargando.set(false);
-        this.error.set(fallo?.mensaje ?? 'No se pudo cargar el odontograma');
-      },
-    });
+    this.odontogramaService
+      .obtenerActual(id)
+      // finalize corre tanto si la peticion termina bien como si falla.
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: (datos) => this.odontograma.set(datos),
+        error: (fallo: ErrorApi) => {
+          this.odontograma.set(null);
+          this.error.set(fallo?.mensaje ?? 'No se pudo cargar el odontograma');
+        },
+      });
 
     this.odontogramaService.resumenEstados(id).subscribe({
       next: (conteo) => this.resumen.set(conteo ?? {}),
@@ -238,6 +252,7 @@ export class OdontogramaComponent {
     const usuario = this.auth.usuarioActual();
     const actual = this.piezasPorNumero().get(numero);
     this.formulario.reset({
+      numeroPieza: numero,
       odontologoId: usuario && usuario.rol === 'ODONTOLOGO' ? String(usuario.id) : '',
       estado: actual?.estado ?? '',
       superficie: '',
@@ -264,20 +279,21 @@ export class OdontogramaComponent {
 
     this.cargandoHistorial.set(true);
     this.errorHistorial.set(null);
-    this.odontogramaService.historialDePieza(id, numero).subscribe({
-      next: (datos) => {
-        const registros = [...(datos?.registros ?? [])].sort((a, b) =>
-          (b.fecha ?? '').localeCompare(a.fecha ?? ''),
-        );
-        this.historial.set(registros);
-        this.cargandoHistorial.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.historial.set([]);
-        this.cargandoHistorial.set(false);
-        this.errorHistorial.set(fallo?.mensaje ?? 'No se pudo cargar el historial de la pieza');
-      },
-    });
+    this.odontogramaService
+      .historialDePieza(id, numero)
+      .pipe(finalize(() => this.cargandoHistorial.set(false)))
+      .subscribe({
+        next: (datos) => {
+          const registros = [...(datos?.registros ?? [])].sort((a, b) =>
+            (b.fecha ?? '').localeCompare(a.fecha ?? ''),
+          );
+          this.historial.set(registros);
+        },
+        error: (fallo: ErrorApi) => {
+          this.historial.set([]);
+          this.errorHistorial.set(fallo?.mensaje ?? 'No se pudo cargar el historial de la pieza');
+        },
+      });
   }
 
   protected recargarHistorial(): void {
@@ -306,7 +322,7 @@ export class OdontogramaComponent {
     const datos: OdontogramaRegistroRequest = {
       pacienteId,
       odontologoId: Number(v.odontologoId),
-      numeroPieza: numero,
+      numeroPieza: Number(v.numeroPieza),
       estado: v.estado as EstadoPieza,
       superficie: v.superficie.trim() || null,
       diagnostico: v.diagnostico.trim() || null,
@@ -315,27 +331,28 @@ export class OdontogramaComponent {
     };
 
     this.guardando.set(true);
-    this.odontogramaService.registrar(datos).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.notificaciones.exito(
-          `Se agrego un registro nuevo a la pieza ${numero}. El anterior se conserva en el historial.`,
-        );
-        this.formulario.patchValue({
-          superficie: '',
-          diagnostico: '',
-          tratamiento: '',
-          observaciones: '',
-        });
-        this.formulario.markAsUntouched();
-        this.cargarOdontograma();
-        this.cargarHistorial(numero);
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo registrar el estado de la pieza');
-      },
-    });
+    this.odontogramaService
+      .registrar(datos)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(
+            `Se agrego un registro nuevo a la pieza ${numero}. El anterior se conserva en el historial.`,
+          );
+          this.formulario.patchValue({
+            superficie: '',
+            diagnostico: '',
+            tratamiento: '',
+            observaciones: '',
+          });
+          this.formulario.markAsUntouched();
+          this.cargarOdontograma();
+          this.cargarHistorial(numero);
+        },
+        error: (fallo: ErrorApi) => {
+          this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo registrar el estado de la pieza');
+        },
+      });
   }
 
   /* --------------------------------- Ayudas ------------------------------- */

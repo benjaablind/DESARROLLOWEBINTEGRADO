@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { CitaService } from '../../core/services/cita.service';
@@ -16,6 +17,11 @@ import {
   PacienteResumen,
   Odontologo,
 } from '../../core/models';
+import {
+  LONGITUDES_HISTORIA,
+  citaDelPaciente,
+  sinSoloEspacios,
+} from '../../core/validators/historia.validators';
 
 /** Historia clinica de un paciente: linea de tiempo de sus atenciones. */
 @Component({
@@ -58,22 +64,59 @@ export class HistoriasComponent {
 
   /* ------------------------------ Formularios ----------------------------- */
 
-  protected readonly formulario = this.fb.nonNullable.group({
-    pacienteId: ['', Validators.required],
-    odontologoId: ['', Validators.required],
-    citaId: [''],
-    motivoConsulta: ['', [Validators.required, Validators.maxLength(500)]],
-    diagnostico: ['', [Validators.required, Validators.maxLength(1000)]],
-    anamnesis: [''],
-    examenClinico: [''],
-    procedimiento: [''],
-    tratamiento: [''],
-    medicamentos: [''],
-    observaciones: [''],
-  });
+  /** Longitudes maximas, para validar y para los mensajes de error. */
+  protected readonly maximos = LONGITUDES_HISTORIA;
 
+  /**
+   * Refleja HistoriaClinicaRequest: motivo y diagnostico son @NotBlank, y la
+   * regla entre campos de la cita vive en el grupo (ver citaDelPaciente).
+   */
+  protected readonly formulario = this.fb.nonNullable.group(
+    {
+      pacienteId: ['', Validators.required],
+      odontologoId: ['', Validators.required],
+      citaId: [''],
+      motivoConsulta: [
+        '',
+        [
+          Validators.required,
+          sinSoloEspacios(),
+          Validators.maxLength(LONGITUDES_HISTORIA.motivoConsulta),
+        ],
+      ],
+      diagnostico: [
+        '',
+        [
+          Validators.required,
+          sinSoloEspacios(),
+          Validators.maxLength(LONGITUDES_HISTORIA.textoClinico),
+        ],
+      ],
+      anamnesis: ['', Validators.maxLength(LONGITUDES_HISTORIA.textoClinico)],
+      examenClinico: ['', Validators.maxLength(LONGITUDES_HISTORIA.textoClinico)],
+      procedimiento: ['', Validators.maxLength(LONGITUDES_HISTORIA.textoClinico)],
+      tratamiento: ['', Validators.maxLength(LONGITUDES_HISTORIA.textoClinico)],
+      medicamentos: ['', Validators.maxLength(LONGITUDES_HISTORIA.textoClinico)],
+      observaciones: ['', Validators.maxLength(LONGITUDES_HISTORIA.textoClinico)],
+    },
+    { validators: citaDelPaciente(() => this.citasDelPaciente()) },
+  );
+
+  /**
+   * Refleja HistoriaAnularRequest: el motivo es @NotBlank. El minimo de 5
+   * caracteres es propio del formulario (el backend no lo exige) y se conserva
+   * para que el motivo diga algo.
+   */
   protected readonly formAnular = this.fb.nonNullable.group({
-    motivo: ['', [Validators.required, Validators.minLength(5)]],
+    motivo: [
+      '',
+      [
+        Validators.required,
+        sinSoloEspacios(),
+        Validators.minLength(5),
+        Validators.maxLength(LONGITUDES_HISTORIA.motivoAnulacion),
+      ],
+    ],
   });
 
   constructor() {
@@ -146,17 +189,17 @@ export class HistoriasComponent {
 
     this.cargando.set(true);
     this.error.set(null);
-    this.historiaService.listarPorPaciente(id).subscribe({
-      next: (lista) => {
-        this.historias.set(lista);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.historias.set([]);
-        this.cargando.set(false);
-        this.error.set(fallo?.mensaje ?? 'No se pudo cargar la historia clinica');
-      },
-    });
+    this.historiaService
+      .listarPorPaciente(id)
+      // finalize corre tanto si la peticion termina bien como si falla.
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: (lista) => this.historias.set(lista),
+        error: (fallo: ErrorApi) => {
+          this.historias.set([]);
+          this.error.set(fallo?.mensaje ?? 'No se pudo cargar la historia clinica');
+        },
+      });
   }
 
   /* ------------------------- Expandir / contraer -------------------------- */
@@ -260,20 +303,21 @@ export class HistoriasComponent {
     };
 
     this.guardando.set(true);
-    this.historiaService.crear(datos).subscribe({
-      next: (creada) => {
-        this.guardando.set(false);
-        this.notificaciones.exito('Consulta registrada en la historia clinica');
-        this.cerrarFormulario();
-        // Si la consulta es de otro paciente, se cambia el paciente mostrado.
-        this.pacienteId.set(String(creada.pacienteId));
-        this.cargarHistorias();
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo registrar la consulta');
-      },
-    });
+    this.historiaService
+      .crear(datos)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: (creada) => {
+          this.notificaciones.exito('Consulta registrada en la historia clinica');
+          this.cerrarFormulario();
+          // Si la consulta es de otro paciente, se cambia el paciente mostrado.
+          this.pacienteId.set(String(creada.pacienteId));
+          this.cargarHistorias();
+        },
+        error: (fallo: ErrorApi) => {
+          this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo registrar la consulta');
+        },
+      });
   }
 
   /* -------------------------------- Anular -------------------------------- */
@@ -300,15 +344,14 @@ export class HistoriasComponent {
     this.anulando.set(true);
     this.historiaService
       .anular(historia.id, this.formAnular.controls.motivo.value.trim())
+      .pipe(finalize(() => this.anulando.set(false)))
       .subscribe({
         next: () => {
-          this.anulando.set(false);
           this.cerrarAnular();
           this.notificaciones.exito('La consulta quedo anulada y se conserva en el historial');
           this.cargarHistorias();
         },
         error: (fallo: ErrorApi) => {
-          this.anulando.set(false);
           this.notificaciones.error(fallo?.mensaje ?? 'No se pudo anular la consulta');
         },
       });

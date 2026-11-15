@@ -289,25 +289,36 @@
             Es opcional. Solo se listan las citas del paciente elegido: una cita de otro paciente
             es rechazada por el servidor.
           </span>
+          @if (formulario.controls.citaId.touched && formulario.hasError('citaDeOtroPaciente')) {
+            <span class="form-error">La cita elegida no pertenece al paciente de la consulta.</span>
+          }
         </div>
 
         <div class="form-campo">
           <label for="hc-motivo">Motivo de consulta <span class="requerido">*</span></label>
           <textarea id="hc-motivo" formControlName="motivoConsulta"></textarea>
-          @if (
-            formulario.controls.motivoConsulta.touched && formulario.controls.motivoConsulta.invalid
-          ) {
-            <span class="form-error">El motivo de consulta es obligatorio.</span>
+          @if (formulario.controls.motivoConsulta.touched) {
+            @if (formulario.controls.motivoConsulta.hasError('required')) {
+              <span class="form-error">El motivo de consulta es obligatorio.</span>
+            } @else if (formulario.controls.motivoConsulta.hasError('soloEspacios')) {
+              <span class="form-error">El motivo no puede quedar solo con espacios.</span>
+            } @else if (formulario.controls.motivoConsulta.hasError('maxlength')) {
+              <span class="form-error">Máximo {{ maximos.motivoConsulta }} caracteres.</span>
+            }
           }
         </div>
 
         <div class="form-campo">
           <label for="hc-diagnostico">Diagnostico <span class="requerido">*</span></label>
           <textarea id="hc-diagnostico" formControlName="diagnostico"></textarea>
-          @if (
-            formulario.controls.diagnostico.touched && formulario.controls.diagnostico.invalid
-          ) {
-            <span class="form-error">El diagnostico es obligatorio.</span>
+          @if (formulario.controls.diagnostico.touched) {
+            @if (formulario.controls.diagnostico.hasError('required')) {
+              <span class="form-error">El diagnóstico es obligatorio.</span>
+            } @else if (formulario.controls.diagnostico.hasError('soloEspacios')) {
+              <span class="form-error">El diagnóstico no puede quedar solo con espacios.</span>
+            } @else if (formulario.controls.diagnostico.hasError('maxlength')) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           }
         </div>
 
@@ -315,26 +326,62 @@
           <div class="form-campo">
             <label for="hc-anamnesis">Anamnesis</label>
             <textarea id="hc-anamnesis" formControlName="anamnesis"></textarea>
+            @if (
+              formulario.controls.anamnesis.touched &&
+              formulario.controls.anamnesis.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           </div>
           <div class="form-campo">
             <label for="hc-examen">Examen clinico</label>
             <textarea id="hc-examen" formControlName="examenClinico"></textarea>
+            @if (
+              formulario.controls.examenClinico.touched &&
+              formulario.controls.examenClinico.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           </div>
           <div class="form-campo">
             <label for="hc-procedimiento">Procedimiento</label>
             <textarea id="hc-procedimiento" formControlName="procedimiento"></textarea>
+            @if (
+              formulario.controls.procedimiento.touched &&
+              formulario.controls.procedimiento.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           </div>
           <div class="form-campo">
             <label for="hc-tratamiento">Tratamiento</label>
             <textarea id="hc-tratamiento" formControlName="tratamiento"></textarea>
+            @if (
+              formulario.controls.tratamiento.touched &&
+              formulario.controls.tratamiento.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           </div>
           <div class="form-campo">
             <label for="hc-medicamentos">Medicamentos</label>
             <textarea id="hc-medicamentos" formControlName="medicamentos"></textarea>
+            @if (
+              formulario.controls.medicamentos.touched &&
+              formulario.controls.medicamentos.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           </div>
           <div class="form-campo">
             <label for="hc-observaciones">Observaciones</label>
             <textarea id="hc-observaciones" formControlName="observaciones"></textarea>
+            @if (
+              formulario.controls.observaciones.touched &&
+              formulario.controls.observaciones.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.textoClinico }} caracteres.</span>
+            }
           </div>
         </div>
 
@@ -380,8 +427,16 @@
         <div class="form-campo">
           <label for="an-motivo">Motivo de la anulacion <span class="requerido">*</span></label>
           <textarea id="an-motivo" formControlName="motivo"></textarea>
-          @if (formAnular.controls.motivo.touched && formAnular.controls.motivo.invalid) {
-            <span class="form-error">Indique el motivo (minimo 5 caracteres).</span>
+          @if (formAnular.controls.motivo.touched) {
+            @if (formAnular.controls.motivo.hasError('required')) {
+              <span class="form-error">Indique el motivo de la anulación.</span>
+            } @else if (formAnular.controls.motivo.hasError('soloEspacios')) {
+              <span class="form-error">El motivo no puede quedar solo con espacios.</span>
+            } @else if (formAnular.controls.motivo.hasError('minlength')) {
+              <span class="form-error">Indique el motivo (minimo 5 caracteres).</span>
+            } @else if (formAnular.controls.motivo.hasError('maxlength')) {
+              <span class="form-error">Máximo {{ maximos.motivoAnulacion }} caracteres.</span>
+            }
           }
         </div>
 
