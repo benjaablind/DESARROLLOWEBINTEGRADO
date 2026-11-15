@@ -216,8 +216,18 @@
 
                 <div class="grid-2">
                   <div class="form-campo">
-                    <label for="sesion-fecha">Fecha</label>
-                    <input id="sesion-fecha" type="date" formControlName="fecha" />
+                    <label for="sesion-fecha">Fecha <span class="requerido">*</span></label>
+                    <input
+                      id="sesion-fecha"
+                      type="date"
+                      formControlName="fecha"
+                      [class.campo-invalido]="
+                        camposSesion.fecha.invalid && camposSesion.fecha.touched
+                      "
+                    />
+                    @if (camposSesion.fecha.touched && camposSesion.fecha.hasError('required')) {
+                      <span class="form-error">Indique la fecha de la sesión.</span>
+                    }
                   </div>
                   <div class="form-campo">
                     <label for="sesion-descripcion"
@@ -232,10 +242,21 @@
                         camposSesion.descripcion.invalid && camposSesion.descripcion.touched
                       "
                     />
-                    @if (camposSesion.descripcion.touched && camposSesion.descripcion.invalid) {
-                      <span class="form-error"
-                        >Indique una descripción de al menos 3 caracteres.</span
-                      >
+                    @if (camposSesion.descripcion.touched) {
+                      @if (camposSesion.descripcion.hasError('required')) {
+                        <span class="form-error">Indique la descripción de la sesión.</span>
+                      } @else if (camposSesion.descripcion.hasError('soloEspacios')) {
+                        <span class="form-error">La descripción no puede quedar en blanco.</span>
+                      } @else if (camposSesion.descripcion.hasError('minlength')) {
+                        <span class="form-error"
+                          >Indique una descripción de al menos 3 caracteres.</span
+                        >
+                      } @else if (camposSesion.descripcion.hasError('maxlength')) {
+                        <span class="form-error"
+                          >La descripción admite hasta
+                          {{ maximos.descripcionSesion }} caracteres.</span
+                        >
+                      }
                     }
                   </div>
                 </div>
@@ -246,7 +267,19 @@
                     id="sesion-observaciones"
                     formControlName="observaciones"
                     rows="2"
+                    [class.campo-invalido]="
+                      camposSesion.observaciones.invalid && camposSesion.observaciones.touched
+                    "
                   ></textarea>
+                  @if (
+                    camposSesion.observaciones.touched &&
+                    camposSesion.observaciones.hasError('maxlength')
+                  ) {
+                    <span class="form-error"
+                      >Las observaciones admiten hasta
+                      {{ maximos.observacionesSesion }} caracteres.</span
+                    >
+                  }
                 </div>
 
                 <div class="form-acciones">
@@ -403,14 +436,34 @@
             placeholder="Ej. Ortodoncia correctiva"
             [class.campo-invalido]="campos.nombre.invalid && campos.nombre.touched"
           />
-          @if (campos.nombre.touched && campos.nombre.invalid) {
-            <span class="form-error">Indique un nombre de al menos 3 caracteres.</span>
+          @if (campos.nombre.touched) {
+            @if (campos.nombre.hasError('required')) {
+              <span class="form-error">Indique el nombre del tratamiento.</span>
+            } @else if (campos.nombre.hasError('soloEspacios')) {
+              <span class="form-error">El nombre no puede quedar en blanco.</span>
+            } @else if (campos.nombre.hasError('minlength')) {
+              <span class="form-error">Indique un nombre de al menos 3 caracteres.</span>
+            } @else if (campos.nombre.hasError('maxlength')) {
+              <span class="form-error"
+                >El nombre admite hasta {{ maximos.nombre }} caracteres.</span
+              >
+            }
           }
         </div>
 
         <div class="form-campo">
           <label for="tp-descripcion">Descripción</label>
-          <textarea id="tp-descripcion" formControlName="descripcion" rows="3"></textarea>
+          <textarea
+            id="tp-descripcion"
+            formControlName="descripcion"
+            rows="3"
+            [class.campo-invalido]="campos.descripcion.invalid && campos.descripcion.touched"
+          ></textarea>
+          @if (campos.descripcion.touched && campos.descripcion.hasError('maxlength')) {
+            <span class="form-error"
+              >La descripción admite hasta {{ maximos.descripcion }} caracteres.</span
+            >
+          }
         </div>
 
         <div class="grid-2">
@@ -424,8 +477,18 @@
               formControlName="precio"
               [class.campo-invalido]="campos.precio.invalid && campos.precio.touched"
             />
-            @if (campos.precio.touched && campos.precio.invalid) {
-              <span class="form-error">El precio debe ser mayor a cero.</span>
+            @if (campos.precio.touched) {
+              @if (campos.precio.hasError('required')) {
+                <span class="form-error">Indique el precio del tratamiento.</span>
+              } @else if (campos.precio.hasError('importeInvalido')) {
+                <span class="form-error">Ingrese un precio válido.</span>
+              } @else if (campos.precio.hasError('importeNoPositivo')) {
+                <span class="form-error">El precio debe ser mayor a cero.</span>
+              } @else if (campos.precio.hasError('importeDecimales')) {
+                <span class="form-error">El precio admite hasta 2 decimales.</span>
+              } @else if (campos.precio.hasError('importeEnteros')) {
+                <span class="form-error">El precio admite hasta 10 dígitos enteros.</span>
+              }
             }
           </div>
 
@@ -438,7 +501,17 @@
 
         <div class="form-campo">
           <label for="tp-observaciones">Observaciones</label>
-          <textarea id="tp-observaciones" formControlName="observaciones" rows="2"></textarea>
+          <textarea
+            id="tp-observaciones"
+            formControlName="observaciones"
+            rows="2"
+            [class.campo-invalido]="campos.observaciones.invalid && campos.observaciones.touched"
+          ></textarea>
+          @if (campos.observaciones.touched && campos.observaciones.hasError('maxlength')) {
+            <span class="form-error"
+              >Las observaciones admiten hasta {{ maximos.observaciones }} caracteres.</span
+            >
+          }
         </div>
 
         <div class="form-acciones">

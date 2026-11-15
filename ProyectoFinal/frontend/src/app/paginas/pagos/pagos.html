@@ -221,21 +221,6 @@
         </div>
       }
 
-      @if (excedeSaldo()) {
-        <div class="alerta alerta-advertencia" role="alert">
-          <span>
-            El monto ingresado ({{ soles(montoTecleado()) }}) supera el saldo pendiente del
-            tratamiento ({{ soles(saldoElegido()) }}).
-            @if (excesoConfirmado()) {
-              Pulse otra vez «Registrar pago» solo si está seguro: el servidor puede rechazar la
-              operación.
-            } @else {
-              Revise el importe antes de continuar.
-            }
-          </span>
-        </div>
-      }
-
       <form [formGroup]="formulario" (ngSubmit)="registrar()" novalidate>
         <div class="form-campo">
           <label for="pg-tratamiento">Tratamiento <span class="requerido">*</span></label>
@@ -266,14 +251,30 @@
               min="0"
               step="0.01"
               formControlName="monto"
-              (input)="cambiarMonto($any($event.target).value)"
-              [class.campo-invalido]="campos.monto.invalid && campos.monto.touched"
+              [class.campo-invalido]="
+                campos.monto.touched &&
+                (campos.monto.invalid || formulario.hasError('montoExcedeSaldo'))
+              "
             />
             <span class="form-ayuda">
               Saldo pendiente del tratamiento: <strong>{{ soles(saldoElegido()) }}</strong>
             </span>
-            @if (campos.monto.touched && campos.monto.invalid) {
-              <span class="form-error">El monto debe ser mayor a cero.</span>
+            @if (campos.monto.touched) {
+              @if (campos.monto.hasError('required')) {
+                <span class="form-error">Indique el monto a cobrar.</span>
+              } @else if (campos.monto.hasError('importeInvalido')) {
+                <span class="form-error">Ingrese un monto válido.</span>
+              } @else if (campos.monto.hasError('importeNoPositivo')) {
+                <span class="form-error">El monto debe ser mayor a cero.</span>
+              } @else if (campos.monto.hasError('importeDecimales')) {
+                <span class="form-error">El monto admite hasta 2 decimales.</span>
+              } @else if (campos.monto.hasError('importeEnteros')) {
+                <span class="form-error">El monto admite hasta 10 dígitos enteros.</span>
+              } @else if (formulario.getError('montoExcedeSaldo'); as exceso) {
+                <span class="form-error">
+                  El monto supera el saldo pendiente del tratamiento ({{ soles(exceso.saldo) }}).
+                </span>
+              }
             }
           </div>
 
@@ -294,13 +295,29 @@
             type="text"
             formControlName="comprobante"
             placeholder="Ej. B001-000123"
+            [class.campo-invalido]="campos.comprobante.invalid && campos.comprobante.touched"
           />
           <span class="form-ayuda">Opcional: número de boleta, factura u operación.</span>
+          @if (campos.comprobante.touched && campos.comprobante.hasError('maxlength')) {
+            <span class="form-error"
+              >El comprobante admite hasta {{ comprobanteMaximo }} caracteres.</span
+            >
+          }
         </div>
 
         <div class="form-campo">
           <label for="pg-observaciones">Observaciones</label>
-          <textarea id="pg-observaciones" formControlName="observaciones" rows="2"></textarea>
+          <textarea
+            id="pg-observaciones"
+            formControlName="observaciones"
+            rows="2"
+            [class.campo-invalido]="campos.observaciones.invalid && campos.observaciones.touched"
+          ></textarea>
+          @if (campos.observaciones.touched && campos.observaciones.hasError('maxlength')) {
+            <span class="form-error"
+              >Las observaciones admiten hasta {{ observacionesMaximas }} caracteres.</span
+            >
+          }
         </div>
 
         <div class="form-acciones">

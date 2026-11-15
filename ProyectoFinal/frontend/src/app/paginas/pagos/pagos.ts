@@ -9,6 +9,7 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PacienteService } from '../../core/services/paciente.service';
@@ -25,6 +26,12 @@ import {
   PagoRequest,
   Tratamiento,
 } from '../../core/models';
+import {
+  COMPROBANTE_MAXIMO_PAGO,
+  OBSERVACIONES_MAXIMAS_PAGO,
+  montoDentroDelSaldoValidator,
+} from '../../core/validators/pagos.validators';
+import { importeValidator } from '../../core/validators/tratamientos.validators';
 
 /** Clase de badge sugerida para cada metodo de pago. */
 const BADGE_METODO_PAGO: Record<MetodoPago, string> = {
@@ -87,30 +94,36 @@ export class PagosComponent implements OnInit {
 
   protected readonly formularioAbierto = signal(false);
   protected readonly errorFormulario = signal<string | null>(null);
-  protected readonly excesoConfirmado = signal(false);
   protected readonly porAnular = signal<Pago | null>(null);
 
   /** Tratamiento elegido en el formulario, para mostrar su saldo. */
   protected readonly tratamientoElegido = signal<Tratamiento | null>(null);
-  /** Monto tecleado, para avisar en vivo cuando supera el saldo. */
-  protected readonly montoTecleado = signal(0);
 
   protected readonly saldoElegido = computed(() => this.tratamientoElegido()?.saldoPendiente ?? 0);
 
-  protected readonly excedeSaldo = computed(() => {
-    const tratamiento = this.tratamientoElegido();
-    return !!tratamiento && this.montoTecleado() > tratamiento.saldoPendiente;
-  });
-
   /* ------------------------------ Formulario ----------------------------- */
 
-  protected readonly formulario = this.fb.nonNullable.group({
-    tratamientoId: ['', Validators.required],
-    monto: [0, [Validators.required, Validators.min(0.01)]],
-    metodo: ['EFECTIVO' as MetodoPago, Validators.required],
-    comprobante: [''],
-    observaciones: [''],
-  });
+  protected readonly comprobanteMaximo = COMPROBANTE_MAXIMO_PAGO;
+  protected readonly observacionesMaximas = OBSERVACIONES_MAXIMAS_PAGO;
+
+  /**
+   * Mismas reglas que PagoRequest y PagoService: monto positivo con hasta
+   * 2 decimales y, a nivel de grupo, nunca mayor al saldo del tratamiento.
+   */
+  protected readonly formulario = this.fb.nonNullable.group(
+    {
+      tratamientoId: ['', Validators.required],
+      monto: [0, [Validators.required, importeValidator()]],
+      metodo: ['EFECTIVO' as MetodoPago, Validators.required],
+      comprobante: ['', Validators.maxLength(COMPROBANTE_MAXIMO_PAGO)],
+      observaciones: ['', Validators.maxLength(OBSERVACIONES_MAXIMAS_PAGO)],
+    },
+    {
+      validators: montoDentroDelSaldoValidator(
+        (id) => this.tratamientos().find((t) => t.id === id)?.saldoPendiente ?? null,
+      ),
+    },
+  );
 
   protected get campos() {
     return this.formulario.controls;
@@ -158,19 +171,19 @@ export class PagosComponent implements OnInit {
     forkJoin({
       cuenta: this.pagoService.estadoCuenta(id),
       historial: this.pagoService.listarPorPaciente(id),
-    }).subscribe({
-      next: ({ cuenta, historial }) => {
-        this.estadoCuenta.set(cuenta);
-        this.pagos.set(historial);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.estadoCuenta.set(null);
-        this.pagos.set([]);
-        this.error.set(fallo?.mensaje ?? 'No se pudo cargar el estado de cuenta');
-        this.cargando.set(false);
-      },
-    });
+    })
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: ({ cuenta, historial }) => {
+          this.estadoCuenta.set(cuenta);
+          this.pagos.set(historial);
+        },
+        error: (fallo: ErrorApi) => {
+          this.estadoCuenta.set(null);
+          this.pagos.set([]);
+          this.error.set(fallo?.mensaje ?? 'No se pudo cargar el estado de cuenta');
+        },
+      });
   }
 
   /* -------------------------------- Ayudas ------------------------------- */
@@ -212,9 +225,7 @@ export class PagosComponent implements OnInit {
 
     const elegido = tratamiento ?? this.tratamientosCobrables()[0] ?? null;
     this.errorFormulario.set(null);
-    this.excesoConfirmado.set(false);
     this.tratamientoElegido.set(elegido);
-    this.montoTecleado.set(elegido?.saldoPendiente ?? 0);
 
     this.formulario.reset({
       tratamientoId: elegido ? String(elegido.id) : '',
@@ -230,33 +241,19 @@ export class PagosComponent implements OnInit {
   protected cerrarFormulario(): void {
     this.formularioAbierto.set(false);
     this.errorFormulario.set(null);
-    this.excesoConfirmado.set(false);
     this.tratamientoElegido.set(null);
-    this.montoTecleado.set(0);
   }
 
   protected cambiarTratamiento(valor: string): void {
     const id = valor ? Number(valor) : null;
     const tratamiento = this.tratamientos().find((t) => t.id === id) ?? null;
     this.tratamientoElegido.set(tratamiento);
-    this.excesoConfirmado.set(false);
-  }
-
-  protected cambiarMonto(valor: string): void {
-    const numero = Number(valor);
-    this.montoTecleado.set(Number.isFinite(numero) ? numero : 0);
-    this.excesoConfirmado.set(false);
   }
 
   protected registrar(): void {
+    // Incluye la regla de grupo: un monto mayor al saldo ya no llega al servidor.
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
-      return;
-    }
-
-    // Aviso previo: obliga a confirmar si el monto supera el saldo pendiente.
-    if (this.excedeSaldo() && !this.excesoConfirmado()) {
-      this.excesoConfirmado.set(true);
       return;
     }
 
@@ -272,19 +269,20 @@ export class PagosComponent implements OnInit {
     this.guardando.set(true);
     this.errorFormulario.set(null);
 
-    this.pagoService.registrar(datos).subscribe({
-      next: (pago) => {
-        this.guardando.set(false);
-        this.cerrarFormulario();
-        this.notificaciones.exito(`Pago de ${this.soles(pago.monto)} registrado correctamente`);
-        this.cargar();
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        // El backend detalla el saldo actual cuando el monto lo excede.
-        this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo registrar el pago');
-      },
-    });
+    this.pagoService
+      .registrar(datos)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: (pago) => {
+          this.cerrarFormulario();
+          this.notificaciones.exito(`Pago de ${this.soles(pago.monto)} registrado correctamente`);
+          this.cargar();
+        },
+        error: (fallo: ErrorApi) => {
+          // Si el saldo cambio desde otro equipo, el backend detalla el saldo actual.
+          this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo registrar el pago');
+        },
+      });
   }
 
   /* --------------------------------- Anular ------------------------------ */
@@ -304,18 +302,19 @@ export class PagosComponent implements OnInit {
     }
 
     this.guardando.set(true);
-    this.pagoService.anular(objetivo.id).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.porAnular.set(null);
-        this.notificaciones.exito('Pago anulado correctamente');
-        this.cargar();
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.porAnular.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo anular el pago');
-      },
-    });
+    this.pagoService
+      .anular(objetivo.id)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: () => {
+          this.porAnular.set(null);
+          this.notificaciones.exito('Pago anulado correctamente');
+          this.cargar();
+        },
+        error: (fallo: ErrorApi) => {
+          this.porAnular.set(null);
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo anular el pago');
+        },
+      });
   }
 }
