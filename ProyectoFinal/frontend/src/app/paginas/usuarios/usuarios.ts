@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { finalize } from 'rxjs';
 
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { UsuarioService } from '../../core/services/usuario.service';
@@ -12,6 +13,12 @@ import {
   Usuario,
   UsuarioRequest,
 } from '../../core/models';
+import {
+  longitudRecortadaValidator,
+  noEnBlancoValidator,
+  passwordDistintaValidator,
+  passwordsIgualesValidator,
+} from '../../core/validators/usuarios.validators';
 
 /** Panel lateral abierto en cada momento. */
 type PanelAbierto = 'formulario' | 'password' | 'permisos' | null;
@@ -136,7 +143,7 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
                         class="btn btn-secundario btn-sm"
                         (click)="abrirCambioPassword(usuario)"
                       >
-                        Contrasena
+                        Contraseña
                       </button>
                       @if (usuario.activo) {
                         <button
@@ -210,7 +217,15 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
                 <label for="nombres">Nombres</label>
                 <input id="nombres" type="text" formControlName="nombres" autocomplete="off" />
                 @if (nombres.touched && nombres.invalid) {
-                  <span class="form-error">Los nombres son obligatorios.</span>
+                  <span class="form-error">
+                    @if (nombres.hasError('required')) {
+                      Los nombres son obligatorios.
+                    } @else if (nombres.hasError('enBlanco')) {
+                      Los nombres no pueden contener solo espacios.
+                    } @else {
+                      Los nombres admiten como máximo 80 caracteres.
+                    }
+                  </span>
                 }
               </div>
 
@@ -218,19 +233,29 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
                 <label for="apellidos">Apellidos</label>
                 <input id="apellidos" type="text" formControlName="apellidos" autocomplete="off" />
                 @if (apellidos.touched && apellidos.invalid) {
-                  <span class="form-error">Los apellidos son obligatorios.</span>
+                  <span class="form-error">
+                    @if (apellidos.hasError('required')) {
+                      Los apellidos son obligatorios.
+                    } @else if (apellidos.hasError('enBlanco')) {
+                      Los apellidos no pueden contener solo espacios.
+                    } @else {
+                      Los apellidos admiten como máximo 80 caracteres.
+                    }
+                  </span>
                 }
               </div>
 
               <div class="form-campo">
-                <label for="email">Correo electronico</label>
+                <label for="email">Correo electrónico</label>
                 <input id="email" type="email" formControlName="email" autocomplete="off" />
                 @if (email.touched && email.invalid) {
                   <span class="form-error">
                     @if (email.hasError('required')) {
                       El correo es obligatorio.
+                    } @else if (email.hasError('maxlength')) {
+                      El correo admite como máximo 120 caracteres.
                     } @else {
-                      Escriba un correo con formato valido.
+                      Escriba un correo con formato válido.
                     }
                   </span>
                 }
@@ -245,30 +270,55 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
                     <span class="form-error">
                       @if (usuarioCtrl.hasError('required')) {
                         El usuario es obligatorio.
+                      } @else if (usuarioCtrl.hasError('enBlanco')) {
+                        El usuario no puede contener solo espacios.
                       } @else {
-                        El usuario debe tener entre 4 y 30 caracteres.
+                        El usuario debe tener entre 4 y 30 caracteres, sin contar los espacios de
+                        los extremos.
                       }
                     </span>
                   }
                 </div>
 
                 <div class="form-campo">
-                  <label for="password">Contrasena</label>
+                  <label for="password">Contraseña</label>
                   <input
                     id="password"
                     type="password"
                     formControlName="password"
                     autocomplete="new-password"
                   />
-                  <span class="form-ayuda">Minimo 6 caracteres.</span>
+                  <span class="form-ayuda">Mínimo 6 caracteres.</span>
                   @if (password.touched && password.invalid) {
                     <span class="form-error">
                       @if (password.hasError('required')) {
-                        La contrasena es obligatoria.
+                        La contraseña es obligatoria.
+                      } @else if (password.hasError('enBlanco')) {
+                        La contraseña no puede contener solo espacios.
                       } @else {
-                        La contrasena debe tener al menos 6 caracteres.
+                        La contraseña debe tener al menos 6 caracteres.
                       }
                     </span>
+                  }
+                </div>
+
+                <div class="form-campo">
+                  <label for="confirmarPassword">Confirmar contraseña</label>
+                  <input
+                    id="confirmarPassword"
+                    type="password"
+                    formControlName="confirmarPassword"
+                    autocomplete="new-password"
+                    [class.campo-invalido]="
+                      confirmarPassword.touched && formulario.hasError('passwordsNoCoinciden')
+                    "
+                  />
+                  @if (confirmarPassword.touched && confirmarPassword.hasError('required')) {
+                    <span class="form-error">Repita la contraseña.</span>
+                  } @else if (
+                    confirmarPassword.touched && formulario.hasError('passwordsNoCoinciden')
+                  ) {
+                    <span class="form-error">Las contraseñas no coinciden.</span>
                   }
                 </div>
               }
@@ -311,7 +361,7 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
             <form [formGroup]="formularioPassword" (ngSubmit)="guardarPassword()" novalidate>
               <div class="form-campo">
-                <label for="passwordActual">Contrasena actual</label>
+                <label for="passwordActual">Contraseña actual</label>
                 <input
                   id="passwordActual"
                   type="password"
@@ -321,31 +371,66 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
                 @if (passwordActual.touched && passwordActual.invalid) {
                   <span class="form-error">
                     @if (passwordActual.hasError('required')) {
-                      La contrasena actual es obligatoria.
+                      La contraseña actual es obligatoria.
                     } @else {
-                      La contrasena debe tener al menos 6 caracteres.
+                      La contraseña actual no puede contener solo espacios.
                     }
                   </span>
                 }
               </div>
 
               <div class="form-campo">
-                <label for="passwordNuevo">Contrasena nueva</label>
+                <label for="passwordNuevo">Contraseña nueva</label>
                 <input
                   id="passwordNuevo"
                   type="password"
                   formControlName="passwordNuevo"
                   autocomplete="new-password"
+                  [class.campo-invalido]="
+                    passwordNuevo.touched && formularioPassword.hasError('passwordSinCambio')
+                  "
                 />
-                <span class="form-ayuda">Minimo 6 caracteres.</span>
+                <span class="form-ayuda">Mínimo 6 caracteres y distinta de la actual.</span>
                 @if (passwordNuevo.touched && passwordNuevo.invalid) {
                   <span class="form-error">
                     @if (passwordNuevo.hasError('required')) {
-                      La contrasena nueva es obligatoria.
+                      La contraseña nueva es obligatoria.
+                    } @else if (passwordNuevo.hasError('enBlanco')) {
+                      La contraseña nueva no puede contener solo espacios.
                     } @else {
-                      La contrasena debe tener al menos 6 caracteres.
+                      La contraseña nueva debe tener al menos 6 caracteres.
                     }
                   </span>
+                } @else if (
+                  passwordNuevo.touched && formularioPassword.hasError('passwordSinCambio')
+                ) {
+                  <span class="form-error">
+                    La contraseña nueva debe ser distinta de la actual.
+                  </span>
+                }
+              </div>
+
+              <div class="form-campo">
+                <label for="confirmarPasswordNuevo">Confirmar contraseña nueva</label>
+                <input
+                  id="confirmarPasswordNuevo"
+                  type="password"
+                  formControlName="confirmarPassword"
+                  autocomplete="new-password"
+                  [class.campo-invalido]="
+                    confirmarPasswordNuevo.touched &&
+                    formularioPassword.hasError('passwordsNoCoinciden')
+                  "
+                />
+                @if (
+                  confirmarPasswordNuevo.touched && confirmarPasswordNuevo.hasError('required')
+                ) {
+                  <span class="form-error">Repita la contraseña nueva.</span>
+                } @else if (
+                  confirmarPasswordNuevo.touched &&
+                  formularioPassword.hasError('passwordsNoCoinciden')
+                ) {
+                  <span class="form-error">Las contraseñas no coinciden.</span>
                 }
               </div>
 
@@ -357,7 +442,7 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
                   @if (guardando()) {
                     <span class="spinner" aria-hidden="true"></span>
                   }
-                  Cambiar contrasena
+                  Cambiar contraseña
                 </button>
               </div>
             </form>
@@ -407,12 +492,12 @@ type FiltroEstado = 'todos' | 'activos' | 'inactivos';
     @if (porEliminar(); as candidato) {
       <div class="capa" (click)="cancelarEliminacion()"></div>
 
-      <div class="dialogo" role="alertdialog" aria-modal="true" aria-label="Confirmar eliminacion">
+      <div class="dialogo" role="alertdialog" aria-modal="true" aria-label="Confirmar eliminación">
         <h2>Eliminar usuario</h2>
         <p class="texto-medio">
-          Se eliminara la cuenta de
+          Se eliminará la cuenta de
           <span class="negrita">{{ candidato.nombreCompleto }}</span>
-          ({{ candidato.usuario }}). Esta accion no se puede deshacer.
+          ({{ candidato.usuario }}). Esta acción no se puede deshacer.
         </p>
 
         <div class="form-acciones">
@@ -555,7 +640,7 @@ export class UsuariosComponent {
       case 'formulario':
         return this.modoFormulario() === 'crear' ? 'Nuevo usuario' : 'Editar usuario';
       case 'password':
-        return 'Cambiar contrasena';
+        return 'Cambiar contraseña';
       case 'permisos':
         return 'Permisos del usuario';
       default:
@@ -565,19 +650,43 @@ export class UsuariosComponent {
 
   /* ----------------------------- Formularios ------------------------------ */
 
-  protected readonly formulario = this.fb.nonNullable.group({
-    nombres: ['', [Validators.required, Validators.maxLength(80)]],
-    apellidos: ['', [Validators.required, Validators.maxLength(80)]],
-    email: ['', [Validators.required, Validators.email]],
-    usuario: ['', [Validators.required, Validators.minLength(4), Validators.maxLength(30)]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-    rol: ['RECEPCIONISTA' as Rol, [Validators.required]],
-  });
+  /**
+   * Refleja UsuarioRequest y ActualizarUsuarioRequest: @NotBlank en los textos,
+   * @Email, @Size(4, 30) en el usuario y @Size(min = 6) en la contrasena. Los
+   * maximos de nombres (80) y correo (120) son los largos de columna de la entidad.
+   * La confirmacion no viaja al backend: solo la compara el validador del grupo.
+   */
+  protected readonly formulario = this.fb.nonNullable.group(
+    {
+      nombres: ['', [Validators.required, noEnBlancoValidator, Validators.maxLength(80)]],
+      apellidos: ['', [Validators.required, noEnBlancoValidator, Validators.maxLength(80)]],
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(120)]],
+      usuario: ['', [Validators.required, noEnBlancoValidator, longitudRecortadaValidator(4, 30)]],
+      password: ['', [Validators.required, noEnBlancoValidator, Validators.minLength(6)]],
+      confirmarPassword: ['', [Validators.required]],
+      rol: ['RECEPCIONISTA' as Rol, [Validators.required]],
+    },
+    { validators: [passwordsIgualesValidator('password', 'confirmarPassword')] },
+  );
 
-  protected readonly formularioPassword = this.fb.nonNullable.group({
-    passwordActual: ['', [Validators.required, Validators.minLength(6)]],
-    passwordNuevo: ['', [Validators.required, Validators.minLength(6)]],
-  });
+  /**
+   * Refleja CambiarPasswordRequest: la actual solo es @NotBlank (puede ser
+   * cualquiera que el servidor acepte) y la nueva ademas @Size(min = 6). El
+   * grupo aplica la regla de UsuarioService: la nueva debe ser distinta.
+   */
+  protected readonly formularioPassword = this.fb.nonNullable.group(
+    {
+      passwordActual: ['', [Validators.required, noEnBlancoValidator]],
+      passwordNuevo: ['', [Validators.required, noEnBlancoValidator, Validators.minLength(6)]],
+      confirmarPassword: ['', [Validators.required]],
+    },
+    {
+      validators: [
+        passwordDistintaValidator('passwordActual', 'passwordNuevo'),
+        passwordsIgualesValidator('passwordNuevo', 'confirmarPassword'),
+      ],
+    },
+  );
 
   protected get nombres() {
     return this.formulario.controls.nombres;
@@ -594,6 +703,9 @@ export class UsuariosComponent {
   protected get password() {
     return this.formulario.controls.password;
   }
+  protected get confirmarPassword() {
+    return this.formulario.controls.confirmarPassword;
+  }
   protected get rolCtrl() {
     return this.formulario.controls.rol;
   }
@@ -602,6 +714,9 @@ export class UsuariosComponent {
   }
   protected get passwordNuevo() {
     return this.formularioPassword.controls.passwordNuevo;
+  }
+  protected get confirmarPasswordNuevo() {
+    return this.formularioPassword.controls.confirmarPassword;
   }
 
   constructor() {
@@ -618,17 +733,17 @@ export class UsuariosComponent {
     const estado = this.filtroEstado();
     const activo = estado === 'todos' ? undefined : estado === 'activos';
 
-    this.servicio.listar(rol, activo).subscribe({
-      next: (lista) => {
-        this.usuarios.set(lista ?? []);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.usuarios.set([]);
-        this.error.set(fallo?.mensaje ?? 'No se pudo cargar la lista de usuarios');
-        this.cargando.set(false);
-      },
-    });
+    // finalize() corre al completar o al fallar: el indicador nunca queda encendido.
+    this.servicio
+      .listar(rol, activo)
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: (lista) => this.usuarios.set(lista ?? []),
+        error: (fallo: ErrorApi) => {
+          this.usuarios.set([]);
+          this.error.set(fallo?.mensaje ?? 'No se pudo cargar la lista de usuarios');
+        },
+      });
   }
 
   protected cambiarRol(evento: Event): void {
@@ -654,10 +769,12 @@ export class UsuariosComponent {
       email: '',
       usuario: '',
       password: '',
+      confirmarPassword: '',
       rol: 'RECEPCIONISTA',
     });
     this.usuarioCtrl.enable();
     this.password.enable();
+    this.confirmarPassword.enable();
     this.panel.set('formulario');
   }
 
@@ -671,18 +788,21 @@ export class UsuariosComponent {
       email: usuario.email,
       usuario: usuario.usuario,
       password: '',
+      confirmarPassword: '',
       rol: usuario.rol,
     });
     // El backend actualiza sin credenciales: se desactivan para que no validen.
+    // Con las dos contrasenas vacias el validador del grupo tampoco opina.
     this.usuarioCtrl.disable();
     this.password.disable();
+    this.confirmarPassword.disable();
     this.panel.set('formulario');
   }
 
   protected abrirCambioPassword(usuario: Usuario): void {
     this.seleccionado.set(usuario);
     this.errorPanel.set(null);
-    this.formularioPassword.reset({ passwordActual: '', passwordNuevo: '' });
+    this.formularioPassword.reset({ passwordActual: '', passwordNuevo: '', confirmarPassword: '' });
     this.panel.set('password');
   }
 
@@ -694,17 +814,17 @@ export class UsuariosComponent {
     this.cargandoPermisos.set(true);
     this.panel.set('permisos');
 
-    this.servicio.permisos(usuario.id).subscribe({
-      next: (respuesta) => {
-        this.permisos.set(respuesta?.permisos ?? []);
-        this.rolPermisos.set(respuesta?.rol ?? usuario.rol);
-        this.cargandoPermisos.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.errorPanel.set(fallo?.mensaje ?? 'No se pudieron cargar los permisos');
-        this.cargandoPermisos.set(false);
-      },
-    });
+    this.servicio
+      .permisos(usuario.id)
+      .pipe(finalize(() => this.cargandoPermisos.set(false)))
+      .subscribe({
+        next: (respuesta) => {
+          this.permisos.set(respuesta?.permisos ?? []);
+          this.rolPermisos.set(respuesta?.rol ?? usuario.rol);
+        },
+        error: (fallo: ErrorApi) =>
+          this.errorPanel.set(fallo?.mensaje ?? 'No se pudieron cargar los permisos'),
+      });
   }
 
   protected cerrarPanel(): void {
@@ -723,10 +843,10 @@ export class UsuariosComponent {
     }
 
     this.errorPanel.set(null);
-    this.guardando.set(true);
     const datos = this.formulario.getRawValue();
 
     if (this.modoFormulario() === 'crear') {
+      // confirmarPassword se queda en el navegador: UsuarioRequest no la tiene.
       const cuerpo: UsuarioRequest = {
         nombres: datos.nombres.trim(),
         apellidos: datos.apellidos.trim(),
@@ -736,21 +856,23 @@ export class UsuariosComponent {
         rol: datos.rol,
       };
 
-      this.servicio.crear(cuerpo).subscribe({
-        next: (creado) => {
-          this.guardando.set(false);
-          this.notificaciones.exito(`Usuario "${creado.usuario}" creado correctamente`);
-          this.cerrarPanel();
-          this.cargarUsuarios();
-        },
-        error: (fallo: ErrorApi) => this.fallarPanel(fallo, 'No se pudo crear el usuario'),
-      });
+      this.guardando.set(true);
+      this.servicio
+        .crear(cuerpo)
+        .pipe(finalize(() => this.guardando.set(false)))
+        .subscribe({
+          next: (creado) => {
+            this.notificaciones.exito(`Usuario "${creado.usuario}" creado correctamente`);
+            this.cerrarPanel();
+            this.cargarUsuarios();
+          },
+          error: (fallo: ErrorApi) => this.fallarPanel(fallo, 'No se pudo crear el usuario'),
+        });
       return;
     }
 
     const actual = this.seleccionado();
     if (!actual) {
-      this.guardando.set(false);
       return;
     }
 
@@ -761,15 +883,18 @@ export class UsuariosComponent {
       rol: datos.rol,
     };
 
-    this.servicio.actualizar(actual.id, cuerpo).subscribe({
-      next: (actualizado) => {
-        this.guardando.set(false);
-        this.notificaciones.exito(`Usuario "${actualizado.usuario}" actualizado`);
-        this.cerrarPanel();
-        this.cargarUsuarios();
-      },
-      error: (fallo: ErrorApi) => this.fallarPanel(fallo, 'No se pudo actualizar el usuario'),
-    });
+    this.guardando.set(true);
+    this.servicio
+      .actualizar(actual.id, cuerpo)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: (actualizado) => {
+          this.notificaciones.exito(`Usuario "${actualizado.usuario}" actualizado`);
+          this.cerrarPanel();
+          this.cargarUsuarios();
+        },
+        error: (fallo: ErrorApi) => this.fallarPanel(fallo, 'No se pudo actualizar el usuario'),
+      });
   }
 
   protected guardarPassword(): void {
@@ -787,52 +912,53 @@ export class UsuariosComponent {
     this.guardando.set(true);
     const datos = this.formularioPassword.getRawValue();
 
+    // Solo viajan los dos campos de CambiarPasswordRequest; la confirmacion no.
     this.servicio
       .cambiarPassword(actual.id, {
         passwordActual: datos.passwordActual,
         passwordNuevo: datos.passwordNuevo,
       })
+      .pipe(finalize(() => this.guardando.set(false)))
       .subscribe({
         next: () => {
-          this.guardando.set(false);
-          this.notificaciones.exito(`Contrasena de "${actual.usuario}" actualizada`);
+          this.notificaciones.exito(`Contraseña de "${actual.usuario}" actualizada`);
           this.cerrarPanel();
         },
         // El backend responde 400 con el detalle exacto: se muestra tal cual.
-        error: (fallo: ErrorApi) => this.fallarPanel(fallo, 'No se pudo cambiar la contrasena'),
+        error: (fallo: ErrorApi) => this.fallarPanel(fallo, 'No se pudo cambiar la contraseña'),
       });
   }
 
   protected activar(usuario: Usuario): void {
     this.procesandoId.set(usuario.id);
 
-    this.servicio.activar(usuario.id).subscribe({
-      next: () => {
-        this.procesandoId.set(null);
-        this.notificaciones.exito(`Usuario "${usuario.usuario}" activado`);
-        this.cargarUsuarios();
-      },
-      error: (fallo: ErrorApi) => {
-        this.procesandoId.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo activar el usuario');
-      },
-    });
+    this.servicio
+      .activar(usuario.id)
+      .pipe(finalize(() => this.procesandoId.set(null)))
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(`Usuario "${usuario.usuario}" activado`);
+          this.cargarUsuarios();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo activar el usuario'),
+      });
   }
 
   protected desactivar(usuario: Usuario): void {
     this.procesandoId.set(usuario.id);
 
-    this.servicio.desactivar(usuario.id).subscribe({
-      next: () => {
-        this.procesandoId.set(null);
-        this.notificaciones.exito(`Usuario "${usuario.usuario}" desactivado`);
-        this.cargarUsuarios();
-      },
-      error: (fallo: ErrorApi) => {
-        this.procesandoId.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo desactivar el usuario');
-      },
-    });
+    this.servicio
+      .desactivar(usuario.id)
+      .pipe(finalize(() => this.procesandoId.set(null)))
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(`Usuario "${usuario.usuario}" desactivado`);
+          this.cargarUsuarios();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo desactivar el usuario'),
+      });
   }
 
   protected pedirConfirmacion(usuario: Usuario): void {
@@ -846,25 +972,29 @@ export class UsuariosComponent {
   protected confirmarEliminacion(usuario: Usuario): void {
     this.guardando.set(true);
 
-    this.servicio.eliminar(usuario.id).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.porEliminar.set(null);
-        this.notificaciones.exito(`Usuario "${usuario.usuario}" eliminado`);
-        this.cargarUsuarios();
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.porEliminar.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar el usuario');
-      },
-    });
+    // El dialogo se cierra en los dos casos: finalize() lo resuelve una sola vez.
+    this.servicio
+      .eliminar(usuario.id)
+      .pipe(
+        finalize(() => {
+          this.guardando.set(false);
+          this.porEliminar.set(null);
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(`Usuario "${usuario.usuario}" eliminado`);
+          this.cargarUsuarios();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar el usuario'),
+      });
   }
 
   /* ------------------------------- Auxiliares ----------------------------- */
 
+  /** Muestra el error en el panel y en una notificacion. guardando lo apaga finalize(). */
   private fallarPanel(fallo: ErrorApi, respaldo: string): void {
-    this.guardando.set(false);
     const mensaje = fallo?.mensaje ?? respaldo;
     this.errorPanel.set(mensaje);
     this.notificaciones.error(mensaje);

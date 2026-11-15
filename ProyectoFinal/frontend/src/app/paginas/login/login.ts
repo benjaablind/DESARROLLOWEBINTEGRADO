@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { ErrorApi } from '../../core/models/comun.model';
+import { noEnBlancoValidator } from '../../core/validators/usuarios.validators';
 
 /** Pantalla de inicio de sesion. Es la unica ruta fuera del layout. */
 @Component({
@@ -25,14 +27,15 @@ export class LoginComponent {
   /** El interceptor redirige aqui con motivo=expirada cuando el backend rechaza el token. */
   protected readonly errorApi = signal<string | null>(
     this.ruta.snapshot.queryParamMap.get('motivo') === 'expirada'
-      ? 'Su sesion expiro. Vuelva a iniciar sesion.'
+      ? 'Su sesión expiró. Vuelva a iniciar sesión.'
       : null,
   );
   protected readonly verPassword = signal(false);
 
+  /** LoginRequest exige @NotBlank en los dos campos: no basta con que no esten vacios. */
   protected readonly formulario = this.fb.nonNullable.group({
-    usuario: ['', [Validators.required, Validators.minLength(3)]],
-    password: ['', [Validators.required, Validators.minLength(4)]],
+    usuario: ['', [Validators.required, noEnBlancoValidator, Validators.minLength(3)]],
+    password: ['', [Validators.required, noEnBlancoValidator, Validators.minLength(4)]],
   });
 
   protected get usuario() {
@@ -66,20 +69,24 @@ export class LoginComponent {
     this.formulario.disable();
 
     // Credenciales incorrectas llegan como 401 y caen en error().
-    this.auth.login(usuario, password).subscribe({
-      next: (respuesta) => {
-        this.cargando.set(false);
-        this.formulario.enable();
-
-        this.notificaciones.exito(`Bienvenido, ${respuesta.usuario.nombres}`);
-        const retorno = this.ruta.snapshot.queryParamMap.get('retorno');
-        this.router.navigateByUrl(retorno && retorno !== '/login' ? retorno : '/dashboard');
-      },
-      error: (fallo: ErrorApi) => {
-        this.cargando.set(false);
-        this.formulario.enable();
-        this.errorApi.set(fallo?.mensaje ?? 'No se pudo iniciar sesion');
-      },
-    });
+    // finalize() libera el boton y el formulario tanto si entra como si falla.
+    this.auth
+      .login(usuario, password)
+      .pipe(
+        finalize(() => {
+          this.cargando.set(false);
+          this.formulario.enable();
+        }),
+      )
+      .subscribe({
+        next: (respuesta) => {
+          this.notificaciones.exito(`Bienvenido, ${respuesta.usuario.nombres}`);
+          const retorno = this.ruta.snapshot.queryParamMap.get('retorno');
+          this.router.navigateByUrl(retorno && retorno !== '/login' ? retorno : '/dashboard');
+        },
+        error: (fallo: ErrorApi) => {
+          this.errorApi.set(fallo?.mensaje ?? 'No se pudo iniciar sesión');
+        },
+      });
   }
 }
