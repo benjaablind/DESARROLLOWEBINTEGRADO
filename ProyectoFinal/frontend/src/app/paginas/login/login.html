@@ -7,19 +7,19 @@
           d="M12 3c-2 0-2.5 1-4.5 1S4 3.6 4 6c0 3 1 4.5 1.6 7.5.5 2.4.6 5.5 2.4 5.5 1.7 0 1.4-4 4-4s2.3 4 4 4c1.8 0 1.9-3.1 2.4-5.5C19 10.5 20 9 20 6c0-2.4-1.5-2-3.5-2S14 3 12 3z"
         />
       </svg>
-      <span>Clinica Dental</span>
+      <span>Clínica Dental</span>
     </div>
 
-    <h2>Sistema de Gestion Odontologica</h2>
+    <h2>Sistema de Gestión Odontológica</h2>
     <p class="descripcion">
-      Pacientes, agenda, historia clinica, odontograma, tratamientos y pagos en un solo lugar.
+      Pacientes, agenda, historia clínica, odontograma, tratamientos y pagos en un solo lugar.
     </p>
 
     <ul class="lista-modulos">
       <li>Agenda de citas y control de asistencia</li>
-      <li>Historia clinica y odontograma por pieza</li>
+      <li>Historia clínica y odontograma por pieza</li>
       <li>Tratamientos, sesiones y estado de cuenta</li>
-      <li>Reportes e indicadores de la clinica</li>
+      <li>Reportes e indicadores de la clínica</li>
     </ul>
   </section>
 
@@ -27,7 +27,7 @@
   <section class="panel-formulario">
     <div class="caja">
       <header class="cabecera">
-        <h1>Iniciar sesion</h1>
+        <h1>Iniciar sesión</h1>
         <p class="texto-suave">Ingrese sus credenciales para acceder al sistema.</p>
       </header>
 
@@ -53,27 +53,29 @@
           />
           @if (usuario.touched && usuario.hasError('required')) {
             <span class="form-error">El usuario es obligatorio.</span>
+          } @else if (usuario.touched && usuario.hasError('enBlanco')) {
+            <span class="form-error">El usuario no puede contener solo espacios.</span>
           } @else if (usuario.touched && usuario.hasError('minlength')) {
             <span class="form-error">Debe tener al menos 3 caracteres.</span>
           }
         </div>
 
         <div class="form-campo">
-          <label for="password">Contrasena</label>
+          <label for="password">Contraseña</label>
           <div class="campo-password">
             <input
               id="password"
               [type]="verPassword() ? 'text' : 'password'"
               formControlName="password"
               autocomplete="current-password"
-              placeholder="Su contrasena"
+              placeholder="Su contraseña"
               [class.campo-invalido]="password.invalid && password.touched"
             />
             <button
               type="button"
               class="ojo"
               (click)="alternarPassword()"
-              [attr.aria-label]="verPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+              [attr.aria-label]="verPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 @if (verPassword()) {
@@ -85,7 +87,9 @@
             </button>
           </div>
           @if (password.touched && password.hasError('required')) {
-            <span class="form-error">La contrasena es obligatoria.</span>
+            <span class="form-error">La contraseña es obligatoria.</span>
+          } @else if (password.touched && password.hasError('enBlanco')) {
+            <span class="form-error">La contraseña no puede contener solo espacios.</span>
           } @else if (password.touched && password.hasError('minlength')) {
             <span class="form-error">Debe tener al menos 4 caracteres.</span>
           }
@@ -102,7 +106,7 @@
       </form>
 
       <p class="nota-demo">
-        Credenciales de demostracion: usuario <code>admin</code>, contrasena
+        Credenciales de demostración: usuario <code>admin</code>, contraseña
         <code>admin123</code>.
         <button type="button" class="btn btn-fantasma btn-sm" (click)="usarDemo()">
           Usar credenciales
@@ -110,6 +114,6 @@
       </p>
     </div>
 
-    <p class="pie">Proyecto academico &middot; Desarrollo Web Integrado</p>
+    <p class="pie">Proyecto académico &middot; Desarrollo Web Integrado</p>
   </section>
 </div>

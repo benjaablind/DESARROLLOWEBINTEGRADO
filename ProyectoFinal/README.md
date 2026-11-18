@@ -6,13 +6,13 @@ Proyecto final del curso Desarrollo Web Integrado (100000ST61). Aplicación de t
 
 El desarrollo sigue las etapas del curso y el plan de trabajo del equipo, que están en [Plan_de_trabajo_6_integrantes_Sistema_Odontologico.docx](Plan_de_trabajo_6_integrantes_Sistema_Odontologico.docx).
 
-Lo implementado corresponde a las semanas 1 a 10, más el avance adicional del frontend:
+Lo implementado corresponde a las semanas 1 a 15:
 
 | Etapa | Contenido | Estado |
 |-------|-----------|--------|
 | Semanas 1 a 4 | Spring Boot, API REST, controladores, servicios, inyección de dependencias, DTOs, validaciones, manejo de excepciones y pruebas con JUnit y MockMvc | Implementado |
 | Semanas 6 a 10 | MySQL, JPA, Hibernate, CRUD, JPQL, transacciones, Spring Security, roles y JWT | Implementado |
-| Semanas 11 a 15 | Angular, componentes, SCSS, rutas, formularios y consumo de la API | Adelantado; falta adaptarlo al JWT |
+| Semanas 11 a 15 | Angular, componentes, SCSS, rutas, formularios y consumo de la API con JWT | Implementado |
 | Semanas 16 a 18 | Integración final, optimización y despliegue | Pendiente |
 
 ### Qué cambió en las semanas 6 a 10
@@ -54,7 +54,8 @@ src/app/
 ├── core/
 │   ├── models/       Interfaces y tipos que reflejan los DTO del backend
 │   ├── services/     Un servicio por módulo, sobre un cliente HTTP común
-│   └── guards/       Control de acceso a las rutas
+│   ├── guards/       Control de acceso a las rutas
+│   └── validators/   Validadores de formularios, uno por módulo, alineados con los DTO
 ├── layout/           Barra lateral, barra superior y notificaciones
 └── paginas/          Una carpeta por pantalla
 ```
@@ -77,6 +78,8 @@ La documentación completa de los endpoints está en [backend/DOCUMENTACION_API.
 Para probar la API sin escribir una sola línea, importa la colección de [postman/](postman/): 73 solicitudes organizadas por módulo, con el caso correcto y el caso de error de cada regla de negocio. La primera inicia sesión y guarda el token que usan todas las demás.
 
 **Avance 2 (semanas 6 a 10):** qué explica cada integrante, el orden de la demostración y las preguntas probables están en [GUIA_AVANCE_2.md](GUIA_AVANCE_2.md).
+
+**Avance 3 (semanas 11 a 15):** los validadores de cada módulo, las 270 pruebas del frontend (`npx ng test --watch=false` en `frontend/`) y el orden de la demostración están en [GUIA_AVANCE_3.md](GUIA_AVANCE_3.md).
 
 El reparto de la sustentación del Avance 1, el orden de la demostración y las respuestas a las preguntas más probables están en [GUIA_SUSTENTACION.md](GUIA_SUSTENTACION.md).
 

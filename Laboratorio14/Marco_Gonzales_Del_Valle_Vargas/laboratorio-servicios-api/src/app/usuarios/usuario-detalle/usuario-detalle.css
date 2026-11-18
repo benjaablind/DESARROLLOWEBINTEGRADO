@@ -1,0 +1,61 @@
+.pagina {
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.volver {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #1f5f94;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tarjeta {
+  padding: 1.25rem;
+  background: white;
+  border: 1px solid #d9e0e7;
+  border-radius: 0.65rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.etiqueta {
+  margin: 0 0 0.25rem;
+  color: #a40000;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+h1 {
+  margin: 0 0 1rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.6rem 1.5rem;
+  margin: 0;
+}
+
+dt {
+  font-weight: 700;
+  color: #123b62;
+}
+
+dd {
+  margin: 0;
+}
+
+.alerta.error {
+  padding: 0.8rem 1rem;
+  background: #fde8e7;
+  color: #991b1b;
+  border: 1px solid #efaaa5;
+  border-radius: 0.4rem;
+}
+
+.estado {
+  padding: 1rem;
+  text-align: center;
+  color: #59636e;
+}

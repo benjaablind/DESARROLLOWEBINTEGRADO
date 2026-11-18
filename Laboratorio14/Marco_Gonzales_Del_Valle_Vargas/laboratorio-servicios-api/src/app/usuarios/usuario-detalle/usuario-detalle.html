@@ -1,0 +1,24 @@
+<section class="pagina">
+  <a routerLink="/usuarios" class="volver">← Volver a usuarios</a>
+
+  @if (cargando()) {
+    <p class="estado">Consultando la API...</p>
+  } @else if (error()) {
+    <div class="alerta error" role="alert">{{ error() }}</div>
+  } @else if (usuario(); as u) {
+    <article class="tarjeta">
+      <p class="etiqueta">GET /users/{{ u.id }}</p>
+      <h1>{{ u.name }}</h1>
+      <dl>
+        <dt>Usuario</dt>
+        <dd>{{ u.username }}</dd>
+        <dt>Correo</dt>
+        <dd>{{ u.email }}</dd>
+        <dt>Teléfono</dt>
+        <dd>{{ u.phone }}</dd>
+        <dt>Sitio web</dt>
+        <dd>{{ u.website }}</dd>
+      </dl>
+    </article>
+  }
+</section>

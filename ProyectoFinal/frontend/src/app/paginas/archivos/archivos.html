@@ -57,7 +57,7 @@
 @if (panelSubida()) {
   <div class="card panel-subida">
     <div class="card-encabezado">
-      <h2>Subir un archivo</h2>
+      <h2>Subir archivos</h2>
       <button type="button" class="btn btn-fantasma btn-sm" (click)="cerrarSubida()">Cerrar</button>
     </div>
 
@@ -69,73 +69,110 @@
 
     <form [formGroup]="formularioSubida" (ngSubmit)="subir()" novalidate>
       <div class="form-campo">
-        <label for="archivo">Archivo <span class="requerido">*</span></label>
+        <label for="pacienteSubida">Paciente <span class="requerido">*</span></label>
+        <select id="pacienteSubida" formControlName="pacienteId">
+          <option value="">Seleccione un paciente...</option>
+          @for (paciente of pacientes(); track paciente.id) {
+            <option [value]="paciente.id">
+              {{ paciente.nombreCompleto }} ({{ paciente.dni }})
+            </option>
+          }
+        </select>
+        @if (
+          formularioSubida.controls.pacienteId.touched &&
+          formularioSubida.controls.pacienteId.hasError('required')
+        ) {
+          <span class="form-error">Elija el paciente dueño de los archivos.</span>
+        }
+      </div>
+
+      <div class="form-campo">
+        <label for="archivo">Archivos <span class="requerido">*</span></label>
         <input
           #entradaArchivo
           id="archivo"
           type="file"
-          (change)="alElegirArchivo($event)"
-          accept=".jpg,.jpeg,.png,.gif,.bmp,.webp,.pdf,.doc,.docx,.txt"
+          multiple
+          (change)="alElegirArchivos($event)"
+          [accept]="aceptaArchivos"
+          [disabled]="subiendo()"
         />
         <span class="form-ayuda">
-          Formatos permitidos: jpg, jpeg, png, gif, bmp, webp, pdf, doc, docx y txt. Peso máximo:
-          10 MB.
+          Puede elegir varios a la vez. Formatos: {{ extensionesPermitidas.join(', ') }}. Peso
+          máximo: 10 MB por archivo.
         </span>
-      </div>
-
-      @if (seleccionado(); as archivo) {
-        <div class="alerta alerta-info">
-          <span>
-            Archivo elegido: <strong>{{ archivo.name }}</strong> &middot;
-            {{ tamanoLegible(archivo.size) }}
-          </span>
-        </div>
-      }
-
-      <div class="grid-2">
-        <div class="form-campo">
-          <label for="pacienteSubida">Paciente <span class="requerido">*</span></label>
-          <select id="pacienteSubida" formControlName="pacienteId">
-            <option value="">Seleccione un paciente...</option>
-            @for (paciente of pacientes(); track paciente.id) {
-              <option [value]="paciente.id">
-                {{ paciente.nombreCompleto }} ({{ paciente.dni }})
-              </option>
-            }
-          </select>
-          @if (
-            formularioSubida.controls.pacienteId.touched &&
-            formularioSubida.controls.pacienteId.hasError('required')
-          ) {
-            <span class="form-error">Elija el paciente dueño del archivo.</span>
-          }
-        </div>
-
-        <div class="form-campo">
-          <label for="tipoSubida">Tipo <span class="requerido">*</span></label>
-          <select id="tipoSubida" formControlName="tipo">
-            @for (tipo of tipos; track tipo) {
-              <option [value]="tipo">{{ etiquetaTipo(tipo) }}</option>
-            }
-          </select>
-        </div>
-      </div>
-
-      <div class="form-campo">
-        <label for="descripcionSubida">Descripción</label>
-        <textarea
-          id="descripcionSubida"
-          formControlName="descripcion"
-          rows="2"
-          placeholder="Opcional. Por ejemplo: radiografía panorámica de control."
-        ></textarea>
-        @if (formularioSubida.controls.descripcion.hasError('maxlength')) {
-          <span class="form-error">Máximo 255 caracteres.</span>
+        @if (formularioSubida.controls.archivos.touched && filas.length === 0) {
+          <span class="form-error">Agregue al menos un archivo.</span>
         }
       </div>
 
+      @if (filas.length > 0) {
+        <ul class="filas-subida" formArrayName="archivos">
+          @for (fila of filas.controls; track fila; let i = $index) {
+            <li
+              class="fila-subida"
+              [formGroupName]="i"
+              [class.fila-invalida]="fila.controls.archivo.invalid"
+            >
+              <div class="fila-subida-cabecera">
+                <span class="fila-subida-nombre">
+                  <strong>{{ fila.controls.archivo.value?.name }}</strong>
+                  <span class="texto-suave">
+                    {{ tamanoLegible(fila.controls.archivo.value?.size ?? 0) }}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  class="btn btn-fantasma btn-sm"
+                  (click)="quitarFila(i)"
+                  [disabled]="subiendo()"
+                >
+                  Quitar
+                </button>
+              </div>
+
+              @if (fila.controls.archivo.touched && fila.controls.archivo.errors; as errores) {
+                <span class="form-error" role="alert">
+                  @if (errores['archivoVacio']) {
+                    El archivo está vacío.
+                  } @else if (errores['extensionNoPermitida']; as e) {
+                    La extensión .{{ e.extension || '?' }} no está permitida.
+                  } @else if (errores['archivoMuyGrande']; as e) {
+                    Pesa {{ tamanoLegible(e.tamano) }} y el máximo es 10 MB.
+                  }
+                </span>
+              } @else {
+                <div class="grid-2">
+                  <div class="form-campo">
+                    <label [for]="'tipoSubida-' + i">Tipo</label>
+                    <select [id]="'tipoSubida-' + i" formControlName="tipo">
+                      @for (tipo of tipos; track tipo) {
+                        <option [value]="tipo">{{ etiquetaTipo(tipo) }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="form-campo">
+                    <label [for]="'descripcionSubida-' + i">Descripción</label>
+                    <input
+                      [id]="'descripcionSubida-' + i"
+                      type="text"
+                      formControlName="descripcion"
+                      placeholder="Opcional. Por ejemplo: panorámica de control."
+                    />
+                    @if (fila.controls.descripcion.hasError('maxlength')) {
+                      <span class="form-error">Máximo {{ descripcionMaxima }} caracteres.</span>
+                    }
+                  </div>
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+
       <p class="texto-pequeno texto-suave">
-        El archivo quedará registrado a nombre de <strong>{{ nombreDelQueSube() }}</strong>.
+        Los archivos quedarán registrados a nombre de <strong>{{ nombreDelQueSube() }}</strong>.
       </p>
 
       <div class="form-acciones">
@@ -148,9 +185,11 @@
           Cancelar
         </button>
         <button type="submit" class="btn btn-primario" [disabled]="subiendo()">
-          @if (subiendo()) {
+          @if (progreso(); as p) {
             <span class="spinner"></span>
-            <span>Subiendo...</span>
+            <span>Subiendo {{ p.hechos + 1 > p.total ? p.total : p.hechos + 1 }} de {{ p.total }}...</span>
+          } @else if (filas.length > 1) {
+            <span>Subir {{ filas.length }} archivos</span>
           } @else {
             <span>Subir archivo</span>
           }
@@ -206,8 +245,8 @@
       @for (archivo of lista(); track archivo.id) {
         <article class="tarjeta-archivo">
           <div class="vista-previa">
-            @if (esImagen(archivo)) {
-              <img [src]="urlDescarga(archivo)" [alt]="archivo.nombreOriginal" loading="lazy" />
+            @if (esImagen(archivo) && vistasPrevias()[archivo.id]; as url) {
+              <img [src]="url" [alt]="archivo.nombreOriginal" />
             } @else {
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path [attr.d]="icono(archivo.tipo)" />
@@ -238,14 +277,14 @@
           </div>
 
           <div class="acciones">
-            <a
+            <button
+              type="button"
               class="btn btn-secundario btn-sm"
-              [href]="urlDescarga(archivo)"
-              [attr.download]="archivo.nombreOriginal"
-              rel="noopener"
+              (click)="descargar(archivo)"
+              [disabled]="descargandoId() === archivo.id"
             >
-              Descargar
-            </a>
+              {{ descargandoId() === archivo.id ? 'Descargando...' : 'Descargar' }}
+            </button>
             <button type="button" class="btn btn-secundario btn-sm" (click)="abrirEdicion(archivo)">
               Editar
             </button>
@@ -288,7 +327,7 @@
           <label for="descripcionEdicion">Descripción</label>
           <textarea id="descripcionEdicion" formControlName="descripcion" rows="3"></textarea>
           @if (formularioEdicion.controls.descripcion.hasError('maxlength')) {
-            <span class="form-error">Máximo 255 caracteres.</span>
+            <span class="form-error">Máximo {{ descripcionMaxima }} caracteres.</span>
           }
         </div>
 

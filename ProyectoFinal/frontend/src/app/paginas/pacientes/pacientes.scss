@@ -87,6 +87,17 @@ svg {
   margin-bottom: var(--e-2);
 }
 
+/* Listas de antecedentes (FormArray): un campo por elemento. */
+.lista-antecedente > .btn {
+  align-self: flex-start;
+}
+
+.elemento-lista {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+}
+
 @media (max-width: 700px) {
   .acciones-fila {
     flex-wrap: wrap;

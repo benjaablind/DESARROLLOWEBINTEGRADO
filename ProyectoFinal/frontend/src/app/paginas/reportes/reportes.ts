@@ -7,6 +7,10 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Observable } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+
+import { rangoFechasValidator } from '../../core/validators/reportes.validators';
 
 import { AuthService } from '../../core/services/auth.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
@@ -114,10 +118,14 @@ export class ReportesComponent implements OnInit {
   protected readonly error = signal<string | null>(null);
 
   /** Rango de fechas del reporte. Ambos extremos son opcionales. */
-  protected readonly rango = this.fb.nonNullable.group({
-    desde: [''],
-    hasta: [''],
-  });
+  protected readonly rango = this.fb.nonNullable.group(
+    {
+      desde: [''],
+      hasta: [''],
+    },
+    // Misma regla que ReporteService.validarRango del backend (semana 13).
+    { validators: rangoFechasValidator },
+  );
 
   protected readonly atajoActivo = signal<string>('todo');
 
@@ -229,85 +237,58 @@ export class ReportesComponent implements OnInit {
   /* --------------------------------- Carga ------------------------------- */
 
   protected cargar(): void {
+    this.error.set(null);
+
+    if (this.usaRango && this.rango.invalid) {
+      // El rango invertido se corrige aqui, sin ir al servidor.
+      this.rango.markAllAsTouched();
+      return;
+    }
+
     const valores = this.rango.getRawValue();
     const rango: RangoFechas = {
       desde: valores.desde || undefined,
       hasta: valores.hasta || undefined,
     };
 
-    this.cargando.set(true);
-    this.error.set(null);
-
     switch (this.pestana()) {
       case 'pacientes':
-        this.reporteService.pacientes(rango).subscribe({
-          next: (r) => {
-            this.repPacientes.set(r);
-            this.cargando.set(false);
-          },
-          error: (fallo: ErrorApi) => {
-            this.repPacientes.set(null);
-            this.marcarError(fallo);
-          },
-        });
+        this.consultar(this.reporteService.pacientes(rango), this.repPacientes);
         break;
-
       case 'citas':
-        this.reporteService.citas(rango).subscribe({
-          next: (r) => {
-            this.repCitas.set(r);
-            this.cargando.set(false);
-          },
-          error: (fallo: ErrorApi) => {
-            this.repCitas.set(null);
-            this.marcarError(fallo);
-          },
-        });
+        this.consultar(this.reporteService.citas(rango), this.repCitas);
         break;
-
       case 'tratamientos':
-        this.reporteService.tratamientos(rango).subscribe({
-          next: (r) => {
-            this.repTratamientos.set(r);
-            this.cargando.set(false);
-          },
-          error: (fallo: ErrorApi) => {
-            this.repTratamientos.set(null);
-            this.marcarError(fallo);
-          },
-        });
+        this.consultar(this.reporteService.tratamientos(rango), this.repTratamientos);
         break;
-
       case 'ingresos':
-        this.reporteService.ingresos(rango).subscribe({
-          next: (r) => {
-            this.repIngresos.set(r);
-            this.cargando.set(false);
-          },
-          error: (fallo: ErrorApi) => {
-            this.repIngresos.set(null);
-            this.marcarError(fallo);
-          },
-        });
+        this.consultar(this.reporteService.ingresos(rango), this.repIngresos);
         break;
-
       case 'pendientes':
-        this.reporteService.pagosPendientes().subscribe({
-          next: (r) => {
-            this.repPendientes.set(r);
-            this.cargando.set(false);
-          },
-          error: (fallo: ErrorApi) => {
-            this.repPendientes.set(null);
-            this.marcarError(fallo);
-          },
-        });
+        this.consultar(this.reporteService.pagosPendientes(), this.repPendientes);
         break;
-
       case 'historial':
         this.cargarHistorial();
         break;
     }
+  }
+
+  /**
+   * Ejecuta la consulta de un reporte y deja el resultado en su signal.
+   * finalize() apaga el indicador de carga tanto si responde como si falla.
+   */
+  private consultar<T>(
+    peticion: Observable<T>,
+    destino: { set(valor: T | null): void },
+  ): void {
+    this.cargando.set(true);
+    peticion.pipe(finalize(() => this.cargando.set(false))).subscribe({
+      next: (r) => destino.set(r),
+      error: (fallo: ErrorApi) => {
+        destino.set(null);
+        this.marcarError(fallo);
+      },
+    });
   }
 
   protected elegirPacienteHistorial(valor: string): void {
@@ -325,25 +306,13 @@ export class ReportesComponent implements OnInit {
       return;
     }
 
-    this.cargando.set(true);
     this.error.set(null);
-
-    this.reporteService.historialDePaciente(id).subscribe({
-      next: (r) => {
-        this.repHistorial.set(r);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.repHistorial.set(null);
-        this.marcarError(fallo);
-      },
-    });
+    this.consultar(this.reporteService.historialDePaciente(id), this.repHistorial);
   }
 
-  /** El backend responde 400 si la fecha inicial es posterior a la final. */
+  /** Mensaje del backend o uno generico si no hubo respuesta. */
   private marcarError(fallo: ErrorApi): void {
     this.error.set(fallo?.mensaje ?? 'No se pudo generar el reporte');
-    this.cargando.set(false);
   }
 
   /* -------------------------------- Ayudas ------------------------------- */

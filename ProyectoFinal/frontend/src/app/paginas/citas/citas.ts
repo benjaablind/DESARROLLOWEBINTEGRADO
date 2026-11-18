@@ -1,13 +1,8 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { AuthService } from '../../core/services/auth.service';
 import { CitaService } from '../../core/services/cita.service';
@@ -25,6 +20,20 @@ import {
   PacienteResumen,
   Odontologo,
 } from '../../core/models';
+import {
+  DURACION_MAXIMA,
+  DURACION_MINIMA,
+  DURACION_POR_DEFECTO,
+  MAX_MOTIVO,
+  MAX_MOTIVO_REPROGRAMACION,
+  MAX_OBSERVACIONES,
+  PATRON_FECHA,
+  PATRON_HORA,
+  fechaHoraDistinta,
+  fechaHoraFutura,
+  numeroEntero,
+  textoNoVacio,
+} from '../../core/validators/citas.validators';
 
 /** Primera y ultima hora que dibuja la linea de tiempo de la agenda. */
 const HORA_INICIO = 8;
@@ -49,20 +58,6 @@ interface BloqueAgenda {
   ancho: number;
   /** Verdadero cuando el bloque no tiene alto para mostrar tres lineas. */
   corto: boolean;
-}
-
-/** Valida que la combinacion de fecha y hora del formulario sea futura. */
-function fechaFutura(grupo: AbstractControl): ValidationErrors | null {
-  const fecha = grupo.get('fecha')?.value as string;
-  const hora = grupo.get('hora')?.value as string;
-  if (!fecha || !hora) {
-    return null;
-  }
-  const valor = new Date(`${fecha}T${hora}:00`);
-  if (Number.isNaN(valor.getTime())) {
-    return { fechaInvalida: true };
-  }
-  return valor.getTime() > Date.now() ? null : { fechaPasada: true };
 }
 
 /** Agenda del dia y listado de citas con su control de estado. */
@@ -115,6 +110,15 @@ export class CitasComponent {
 
   /* ------------------------------ Formularios ----------------------------- */
 
+  /** Limites del backend que la plantilla muestra en ayudas y mensajes. */
+  protected readonly limites = {
+    duracionMinima: DURACION_MINIMA,
+    duracionMaxima: DURACION_MAXIMA,
+    motivo: MAX_MOTIVO,
+    observaciones: MAX_OBSERVACIONES,
+    motivoReprogramacion: MAX_MOTIVO_REPROGRAMACION,
+  };
+
   protected readonly filtros = this.fb.nonNullable.group({
     dia: [''],
     pacienteId: [''],
@@ -126,25 +130,37 @@ export class CitasComponent {
     {
       pacienteId: ['', Validators.required],
       odontologoId: ['', Validators.required],
-      fecha: ['', Validators.required],
-      hora: ['', Validators.required],
-      duracionMinutos: [30, [Validators.required, Validators.min(10), Validators.max(240)]],
-      motivo: [''],
-      observaciones: [''],
+      fecha: ['', [Validators.required, Validators.pattern(PATRON_FECHA)]],
+      hora: ['', [Validators.required, Validators.pattern(PATRON_HORA)]],
+      duracionMinutos: [
+        DURACION_POR_DEFECTO,
+        [
+          Validators.required,
+          Validators.min(DURACION_MINIMA),
+          Validators.max(DURACION_MAXIMA),
+          numeroEntero,
+        ],
+      ],
+      motivo: ['', [Validators.required, textoNoVacio, Validators.maxLength(MAX_MOTIVO)]],
+      observaciones: ['', Validators.maxLength(MAX_OBSERVACIONES)],
     },
-    { validators: fechaFutura },
+    { validators: fechaHoraFutura() },
   );
 
   protected readonly formReprogramar = this.fb.nonNullable.group(
     {
-      fecha: ['', Validators.required],
-      hora: ['', Validators.required],
-      motivo: [''],
+      fecha: ['', [Validators.required, Validators.pattern(PATRON_FECHA)]],
+      hora: ['', [Validators.required, Validators.pattern(PATRON_HORA)]],
+      motivo: ['', Validators.maxLength(MAX_MOTIVO_REPROGRAMACION)],
     },
-    { validators: fechaFutura },
+    {
+      validators: [fechaHoraFutura(), fechaHoraDistinta(() => this.citaAReprogramar()?.fechaHora)],
+    },
   );
 
-  protected readonly formCancelar = this.fb.nonNullable.group({ motivo: [''] });
+  protected readonly formCancelar = this.fb.nonNullable.group({
+    motivo: ['', Validators.maxLength(MAX_OBSERVACIONES)],
+  });
 
   constructor() {
     const pacienteId = this.ruta.snapshot.queryParamMap.get('pacienteId');
@@ -220,14 +236,10 @@ export class CitasComponent {
             estado: (this.filtros.controls.estado.value || undefined) as EstadoCita | undefined,
           });
 
-    peticion.subscribe({
-      next: (lista) => {
-        this.citas.set(lista);
-        this.cargando.set(false);
-      },
+    peticion.pipe(finalize(() => this.cargando.set(false))).subscribe({
+      next: (lista) => this.citas.set(lista),
       error: (fallo: ErrorApi) => {
         this.citas.set([]);
-        this.cargando.set(false);
         this.error.set(fallo?.mensaje ?? 'No se pudieron cargar las citas');
       },
     });
@@ -281,7 +293,7 @@ export class CitasComponent {
       odontologoId: '',
       fecha: this.vista() === 'agenda' ? this.dia() : CitasComponent.hoy(),
       hora: '',
-      duracionMinutos: 30,
+      duracionMinutos: DURACION_POR_DEFECTO,
       motivo: '',
       observaciones: '',
     });
@@ -297,7 +309,7 @@ export class CitasComponent {
       odontologoId: String(cita.odontologoId),
       fecha: this.parteFecha(cita.fechaHora),
       hora: this.parteHora(cita.fechaHora),
-      duracionMinutos: cita.duracionMinutos ?? 30,
+      duracionMinutos: cita.duracionMinutos ?? DURACION_POR_DEFECTO,
       motivo: cita.motivo ?? '',
       observaciones: cita.observaciones ?? '',
     });
@@ -322,16 +334,13 @@ export class CitasComponent {
     }
 
     this.consultandoAgenda.set(true);
-    this.citaService.disponibilidad(odontologoId, fecha).subscribe({
-      next: (horas) => {
-        this.ocupadas.set(horas ?? []);
-        this.consultandoAgenda.set(false);
-      },
-      error: () => {
-        this.ocupadas.set([]);
-        this.consultandoAgenda.set(false);
-      },
-    });
+    this.citaService
+      .disponibilidad(odontologoId, fecha)
+      .pipe(finalize(() => this.consultandoAgenda.set(false)))
+      .subscribe({
+        next: (horas) => this.ocupadas.set(horas ?? []),
+        error: () => this.ocupadas.set([]),
+      });
   }
 
   protected guardar(): void {
@@ -358,17 +367,14 @@ export class CitasComponent {
       : this.citaService.crear(datos);
 
     this.guardando.set(true);
-    peticion.subscribe({
+    peticion.pipe(finalize(() => this.guardando.set(false))).subscribe({
       next: () => {
-        this.guardando.set(false);
         this.notificaciones.exito(enEdicion ? 'Cita actualizada' : 'Cita registrada');
         this.cerrarFormulario();
         this.cargarCitas();
       },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo guardar la cita');
-      },
+      error: (fallo: ErrorApi) =>
+        this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo guardar la cita'),
     });
   }
 
@@ -376,32 +382,34 @@ export class CitasComponent {
 
   protected confirmar(cita: Cita): void {
     this.procesando.set(cita.id);
-    this.citaService.confirmar(cita.id).subscribe({
-      next: () => {
-        this.procesando.set(null);
-        this.notificaciones.exito('Cita confirmada');
-        this.cargarCitas();
-      },
-      error: (fallo: ErrorApi) => {
-        this.procesando.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo confirmar la cita');
-      },
-    });
+    this.citaService
+      .confirmar(cita.id)
+      .pipe(finalize(() => this.procesando.set(null)))
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito('Cita confirmada');
+          this.cargarCitas();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo confirmar la cita'),
+      });
   }
 
   protected registrarAsistencia(cita: Cita, asistio: boolean): void {
     this.procesando.set(cita.id);
-    this.citaService.registrarAsistencia(cita.id, asistio).subscribe({
-      next: () => {
-        this.procesando.set(null);
-        this.notificaciones.exito(asistio ? 'Asistencia registrada' : 'Se registro la inasistencia');
-        this.cargarCitas();
-      },
-      error: (fallo: ErrorApi) => {
-        this.procesando.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo registrar la asistencia');
-      },
-    });
+    this.citaService
+      .registrarAsistencia(cita.id, asistio)
+      .pipe(finalize(() => this.procesando.set(null)))
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(
+            asistio ? 'Asistencia registrada' : 'Se registro la inasistencia',
+          );
+          this.cargarCitas();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo registrar la asistencia'),
+      });
   }
 
   /* ------------------------------ Reprogramar ----------------------------- */
@@ -436,19 +444,17 @@ export class CitasComponent {
         nuevaFechaHora: `${fecha}T${hora}:00`,
         motivo: motivo.trim() || null,
       })
+      .pipe(finalize(() => this.procesando.set(null)))
       .subscribe({
         next: () => {
-          this.procesando.set(null);
           this.cerrarReprogramar();
           this.notificaciones.exito(
             'Se creo una cita nueva. La anterior quedo marcada como reprogramada.',
           );
           this.cargarCitas();
         },
-        error: (fallo: ErrorApi) => {
-          this.procesando.set(null);
-          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo reprogramar la cita');
-        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo reprogramar la cita'),
       });
   }
 
@@ -468,20 +474,24 @@ export class CitasComponent {
     if (!cita) {
       return;
     }
+    if (this.formCancelar.invalid) {
+      this.formCancelar.markAllAsTouched();
+      return;
+    }
     const motivo = this.formCancelar.controls.motivo.value.trim();
     this.procesando.set(cita.id);
-    this.citaService.cancelar(cita.id, motivo || undefined).subscribe({
-      next: () => {
-        this.procesando.set(null);
-        this.cerrarCancelar();
-        this.notificaciones.exito('Cita cancelada');
-        this.cargarCitas();
-      },
-      error: (fallo: ErrorApi) => {
-        this.procesando.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo cancelar la cita');
-      },
-    });
+    this.citaService
+      .cancelar(cita.id, motivo || undefined)
+      .pipe(finalize(() => this.procesando.set(null)))
+      .subscribe({
+        next: () => {
+          this.cerrarCancelar();
+          this.notificaciones.exito('Cita cancelada');
+          this.cargarCitas();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo cancelar la cita'),
+      });
   }
 
   /* -------------------------------- Eliminar ------------------------------ */
@@ -500,18 +510,18 @@ export class CitasComponent {
       return;
     }
     this.procesando.set(cita.id);
-    this.citaService.eliminar(cita.id).subscribe({
-      next: () => {
-        this.procesando.set(null);
-        this.cerrarEliminar();
-        this.notificaciones.exito('Cita eliminada');
-        this.cargarCitas();
-      },
-      error: (fallo: ErrorApi) => {
-        this.procesando.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar la cita');
-      },
-    });
+    this.citaService
+      .eliminar(cita.id)
+      .pipe(finalize(() => this.procesando.set(null)))
+      .subscribe({
+        next: () => {
+          this.cerrarEliminar();
+          this.notificaciones.exito('Cita eliminada');
+          this.cargarCitas();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar la cita'),
+      });
   }
 
   /* ------------------------- Reglas segun el estado ----------------------- */
@@ -539,6 +549,19 @@ export class CitasComponent {
 
   protected puedeEditar(cita: Cita): boolean {
     return !this.esFinal(cita);
+  }
+
+  /* ------------------------- Mensajes de validacion ----------------------- */
+
+  /** Un error de campo se muestra solo si el campo fue tocado o se intento enviar. */
+  protected verError(control: AbstractControl, codigo: string): boolean {
+    return control.touched && control.hasError(codigo);
+  }
+
+  /** Los errores de grupo dependen de la fecha y la hora: basta con tocar una de las dos. */
+  protected verErrorDeFecha(grupo: AbstractControl, codigo: string): boolean {
+    const tocado = !!grupo.get('fecha')?.touched || !!grupo.get('hora')?.touched;
+    return tocado && grupo.hasError(codigo);
   }
 
   /* --------------------------------- Ayudas ------------------------------- */

@@ -21,6 +21,7 @@ export interface HistoriaClinica {
   motivoAnulacion: string | null;
 }
 
+/** Refleja dto/HistoriaClinicaRequest: motivoConsulta y diagnostico son @NotBlank. */
 export interface HistoriaClinicaRequest {
   pacienteId: number;
   odontologoId: number;
@@ -28,7 +29,7 @@ export interface HistoriaClinicaRequest {
   motivoConsulta: string;
   anamnesis?: string | null;
   examenClinico?: string | null;
-  diagnostico?: string | null;
+  diagnostico: string;
   procedimiento?: string | null;
   tratamiento?: string | null;
   medicamentos?: string | null;

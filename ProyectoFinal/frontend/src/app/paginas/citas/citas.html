@@ -394,7 +394,7 @@
                 </option>
               }
             </select>
-            @if (formulario.controls.pacienteId.touched && formulario.controls.pacienteId.invalid) {
+            @if (verError(formulario.controls.pacienteId, 'required')) {
               <span class="form-error">Elija un paciente.</span>
             }
           </div>
@@ -411,10 +411,8 @@
                 <option [value]="odontologo.id">{{ odontologo.nombreCompleto }}</option>
               }
             </select>
-            @if (
-              formulario.controls.odontologoId.touched && formulario.controls.odontologoId.invalid
-            ) {
-              <span class="form-error">Elija un odontologo.</span>
+            @if (verError(formulario.controls.odontologoId, 'required')) {
+              <span class="form-error">Elija un odontólogo.</span>
             }
           </div>
 
@@ -426,46 +424,81 @@
               formControlName="fecha"
               (change)="consultarDisponibilidad()"
             />
-            @if (formulario.controls.fecha.touched && formulario.controls.fecha.invalid) {
+            @if (verError(formulario.controls.fecha, 'required')) {
               <span class="form-error">Indique la fecha.</span>
+            } @else if (verError(formulario.controls.fecha, 'pattern')) {
+              <span class="form-error">La fecha debe tener el formato AAAA-MM-DD.</span>
             }
           </div>
 
           <div class="form-campo">
             <label for="c-hora">Hora <span class="requerido">*</span></label>
             <input id="c-hora" type="time" formControlName="hora" />
-            @if (formulario.controls.hora.touched && formulario.controls.hora.invalid) {
+            @if (verError(formulario.controls.hora, 'required')) {
               <span class="form-error">Indique la hora.</span>
+            } @else if (verError(formulario.controls.hora, 'pattern')) {
+              <span class="form-error">La hora debe tener el formato HH:MM.</span>
             }
           </div>
 
           <div class="form-campo">
-            <label for="c-duracion">Duracion en minutos <span class="requerido">*</span></label>
-            <input id="c-duracion" type="number" min="10" max="240" step="5" formControlName="duracionMinutos" />
-            <span class="form-ayuda">Entre 10 y 240 minutos. Por defecto 30.</span>
-            @if (formulario.controls.duracionMinutos.touched && formulario.controls.duracionMinutos.invalid) {
-              <span class="form-error">La duracion debe estar entre 10 y 240 minutos.</span>
+            <label for="c-duracion">Duración en minutos <span class="requerido">*</span></label>
+            <input
+              id="c-duracion"
+              type="number"
+              [min]="limites.duracionMinima"
+              [max]="limites.duracionMaxima"
+              step="5"
+              formControlName="duracionMinutos"
+            />
+            <span class="form-ayuda">
+              Entre {{ limites.duracionMinima }} y {{ limites.duracionMaxima }} minutos. Por defecto
+              30.
+            </span>
+            @if (verError(formulario.controls.duracionMinutos, 'required')) {
+              <span class="form-error">Indique la duración.</span>
+            } @else if (verError(formulario.controls.duracionMinutos, 'min')) {
+              <span class="form-error">
+                La duración mínima es de {{ limites.duracionMinima }} minutos.
+              </span>
+            } @else if (verError(formulario.controls.duracionMinutos, 'max')) {
+              <span class="form-error">
+                La duración máxima es de {{ limites.duracionMaxima }} minutos.
+              </span>
+            } @else if (verError(formulario.controls.duracionMinutos, 'entero')) {
+              <span class="form-error">La duración debe ser un número entero de minutos.</span>
             }
           </div>
 
           <div class="form-campo">
-            <label for="c-motivo">Motivo</label>
+            <label for="c-motivo">Motivo <span class="requerido">*</span></label>
             <input id="c-motivo" type="text" formControlName="motivo" placeholder="Ej. Control" />
+            @if (verError(formulario.controls.motivo, 'required')) {
+              <span class="form-error">El motivo es obligatorio.</span>
+            } @else if (verError(formulario.controls.motivo, 'soloEspacios')) {
+              <span class="form-error">El motivo no puede contener solo espacios.</span>
+            } @else if (verError(formulario.controls.motivo, 'maxlength')) {
+              <span class="form-error">Máximo {{ limites.motivo }} caracteres.</span>
+            }
           </div>
         </div>
 
-        @if (
-          formulario.hasError('fechaPasada') &&
-          (formulario.controls.fecha.touched || formulario.controls.hora.touched)
-        ) {
-          <div class="alerta alerta-advertencia">
+        @if (verErrorDeFecha(formulario, 'fechaPasada')) {
+          <div class="alerta alerta-advertencia" role="alert">
             La fecha y hora de la cita debe ser futura.
+          </div>
+        } @else if (verErrorDeFecha(formulario, 'fechaInvalida')) {
+          <div class="alerta alerta-advertencia" role="alert">
+            La fecha u hora indicada no existe en el calendario.
           </div>
         }
 
         <div class="form-campo">
           <label for="c-observaciones">Observaciones</label>
           <textarea id="c-observaciones" formControlName="observaciones"></textarea>
+          @if (verError(formulario.controls.observaciones, 'maxlength')) {
+            <span class="form-error">Máximo {{ limites.observaciones }} caracteres.</span>
+          }
         </div>
 
         <!-- Aviso de horas ya ocupadas por el odontologo -->
@@ -527,23 +560,43 @@
           <div class="form-campo">
             <label for="r-fecha">Nueva fecha <span class="requerido">*</span></label>
             <input id="r-fecha" type="date" formControlName="fecha" />
+            @if (verError(formReprogramar.controls.fecha, 'required')) {
+              <span class="form-error">Indique la nueva fecha.</span>
+            } @else if (verError(formReprogramar.controls.fecha, 'pattern')) {
+              <span class="form-error">La fecha debe tener el formato AAAA-MM-DD.</span>
+            }
           </div>
           <div class="form-campo">
             <label for="r-hora">Nueva hora <span class="requerido">*</span></label>
             <input id="r-hora" type="time" formControlName="hora" />
+            @if (verError(formReprogramar.controls.hora, 'required')) {
+              <span class="form-error">Indique la nueva hora.</span>
+            } @else if (verError(formReprogramar.controls.hora, 'pattern')) {
+              <span class="form-error">La hora debe tener el formato HH:MM.</span>
+            }
           </div>
         </div>
 
-        @if (
-          formReprogramar.hasError('fechaPasada') &&
-          (formReprogramar.controls.fecha.touched || formReprogramar.controls.hora.touched)
-        ) {
-          <div class="alerta alerta-advertencia">La nueva fecha y hora debe ser futura.</div>
+        @if (verErrorDeFecha(formReprogramar, 'mismaFechaHora')) {
+          <div class="alerta alerta-advertencia" role="alert">
+            Elija una fecha u hora distinta de la actual de la cita.
+          </div>
+        } @else if (verErrorDeFecha(formReprogramar, 'fechaPasada')) {
+          <div class="alerta alerta-advertencia" role="alert">
+            La nueva fecha y hora debe ser futura.
+          </div>
+        } @else if (verErrorDeFecha(formReprogramar, 'fechaInvalida')) {
+          <div class="alerta alerta-advertencia" role="alert">
+            La fecha u hora indicada no existe en el calendario.
+          </div>
         }
 
         <div class="form-campo">
           <label for="r-motivo">Motivo de la reprogramacion</label>
           <textarea id="r-motivo" formControlName="motivo"></textarea>
+          @if (verError(formReprogramar.controls.motivo, 'maxlength')) {
+            <span class="form-error">Máximo {{ limites.motivoReprogramacion }} caracteres.</span>
+          }
         </div>
 
         <div class="alerta alerta-info">
@@ -581,6 +634,9 @@
           <span class="form-ayuda">
             Una cita cancelada ya no admite cambios de estado posteriores.
           </span>
+          @if (verError(formCancelar.controls.motivo, 'maxlength')) {
+            <span class="form-error">Máximo {{ limites.observaciones }} caracteres.</span>
+          }
         </div>
 
         <div class="form-acciones">

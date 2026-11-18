@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { ApiService } from './api.service';
-import { HistoriaClinica, HistoriaClinicaRequest } from '../models/historia.model';
+import {
+  HistoriaAnularRequest,
+  HistoriaClinica,
+  HistoriaClinicaRequest,
+} from '../models/historia.model';
 
 /** Consume /api/historias. */
 @Injectable({ providedIn: 'root' })
@@ -25,6 +29,7 @@ export class HistoriaClinicaService {
 
   /** PATCH /api/historias/{id}/anular : las historias no se borran, se anulan. */
   anular(id: number, motivo: string): Observable<HistoriaClinica> {
-    return this.api.patch<HistoriaClinica>(`${this.ruta}/${id}/anular`, { motivo });
+    const cuerpo: HistoriaAnularRequest = { motivo };
+    return this.api.patch<HistoriaClinica>(`${this.ruta}/${id}/anular`, cuerpo);
   }
 }

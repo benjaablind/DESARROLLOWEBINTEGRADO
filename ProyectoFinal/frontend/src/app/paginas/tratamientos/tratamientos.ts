@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { PacienteService } from '../../core/services/paciente.service';
@@ -25,6 +26,15 @@ import {
   TratamientoRequest,
   Odontologo,
 } from '../../core/models';
+import {
+  DESCRIPCION_MAXIMA_SESION,
+  DESCRIPCION_MAXIMA_TRATAMIENTO,
+  NOMBRE_MAXIMO_TRATAMIENTO,
+  OBSERVACIONES_MAXIMAS_SESION,
+  OBSERVACIONES_MAXIMAS_TRATAMIENTO,
+  importeValidator,
+  textoNoVacioValidator,
+} from '../../core/validators/tratamientos.validators';
 
 /** Estados en los que el tratamiento ya no admite cambios. */
 const ESTADOS_FINALES: EstadoTratamiento[] = ['COMPLETADO', 'CANCELADO'];
@@ -99,20 +109,46 @@ export class TratamientosComponent implements OnInit {
 
   /* ------------------------------ Formularios ---------------------------- */
 
+  protected readonly maximos = {
+    nombre: NOMBRE_MAXIMO_TRATAMIENTO,
+    descripcion: DESCRIPCION_MAXIMA_TRATAMIENTO,
+    observaciones: OBSERVACIONES_MAXIMAS_TRATAMIENTO,
+    descripcionSesion: DESCRIPCION_MAXIMA_SESION,
+    observacionesSesion: OBSERVACIONES_MAXIMAS_SESION,
+  };
+
+  /** Reglas de TratamientoRequest: nombre @NotBlank y precio @Positive @Digits(10, 2). */
   protected readonly formulario = this.fb.nonNullable.group({
     pacienteId: ['', Validators.required],
     odontologoId: ['', Validators.required],
-    nombre: ['', [Validators.required, Validators.minLength(3)]],
-    descripcion: [''],
-    precio: [0, [Validators.required, Validators.min(0.01)]],
+    nombre: [
+      '',
+      [
+        Validators.required,
+        textoNoVacioValidator,
+        Validators.minLength(3),
+        Validators.maxLength(NOMBRE_MAXIMO_TRATAMIENTO),
+      ],
+    ],
+    descripcion: ['', Validators.maxLength(DESCRIPCION_MAXIMA_TRATAMIENTO)],
+    precio: [0, [Validators.required, importeValidator()]],
     fechaInicio: [''],
-    observaciones: [''],
+    observaciones: ['', Validators.maxLength(OBSERVACIONES_MAXIMAS_TRATAMIENTO)],
   });
 
+  /** Reglas de SesionRequest: fecha @NotNull y descripcion @NotBlank. */
   protected readonly formularioSesion = this.fb.nonNullable.group({
-    fecha: [''],
-    descripcion: ['', [Validators.required, Validators.minLength(3)]],
-    observaciones: [''],
+    fecha: ['', Validators.required],
+    descripcion: [
+      '',
+      [
+        Validators.required,
+        textoNoVacioValidator,
+        Validators.minLength(3),
+        Validators.maxLength(DESCRIPCION_MAXIMA_SESION),
+      ],
+    ],
+    observaciones: ['', Validators.maxLength(OBSERVACIONES_MAXIMAS_SESION)],
   });
 
   protected get campos() {
@@ -156,15 +192,12 @@ export class TratamientosComponent implements OnInit {
         pacienteId: this.filtroPaciente() ?? undefined,
         estado: this.filtroEstado() || undefined,
       })
+      .pipe(finalize(() => this.cargando.set(false)))
       .subscribe({
-        next: (lista) => {
-          this.tratamientos.set(lista);
-          this.cargando.set(false);
-        },
+        next: (lista) => this.tratamientos.set(lista),
         error: (fallo: ErrorApi) => {
           this.tratamientos.set([]);
           this.error.set(fallo?.mensaje ?? 'No se pudieron cargar los tratamientos');
-          this.cargando.set(false);
         },
       });
   }
@@ -308,9 +341,8 @@ export class TratamientosComponent implements OnInit {
       ? this.tratamientoService.actualizar(id, datos)
       : this.tratamientoService.crear(datos);
 
-    peticion.subscribe({
+    peticion.pipe(finalize(() => this.guardando.set(false))).subscribe({
       next: (guardado) => {
-        this.guardando.set(false);
         this.cerrarFormulario();
         this.notificaciones.exito(
           id ? 'Tratamiento actualizado correctamente' : 'Tratamiento registrado correctamente',
@@ -323,7 +355,6 @@ export class TratamientosComponent implements OnInit {
         }
       },
       error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
         this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo guardar el tratamiento');
       },
     });
@@ -385,19 +416,18 @@ export class TratamientosComponent implements OnInit {
 
     this.tratamientoService
       .agregarSesion(tratamientoId, {
-        fecha: valores.fecha || null,
+        fecha: valores.fecha,
         descripcion: valores.descripcion.trim(),
         observaciones: valores.observaciones.trim() || null,
       })
+      .pipe(finalize(() => this.guardando.set(false)))
       .subscribe({
         next: (actualizado) => {
-          this.guardando.set(false);
           this.reemplazar(actualizado);
           this.cerrarSesion();
           this.notificaciones.exito('Sesión agregada al plan');
         },
         error: (fallo: ErrorApi) => {
-          this.guardando.set(false);
           this.errorSesion.set(fallo?.mensaje ?? 'No se pudo agregar la sesión');
         },
       });
@@ -450,23 +480,24 @@ export class TratamientosComponent implements OnInit {
     }
 
     this.guardando.set(true);
-    this.tratamientoService.eliminarSesion(objetivo.tratamientoId, objetivo.sesion.id).subscribe({
-      next: (actualizado) => {
-        this.guardando.set(false);
-        this.sesionPorEliminar.set(null);
-        if (actualizado) {
-          this.reemplazar(actualizado);
-        } else {
-          this.cargar();
-        }
-        this.notificaciones.exito('Sesión eliminada');
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.sesionPorEliminar.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar la sesión');
-      },
-    });
+    this.tratamientoService
+      .eliminarSesion(objetivo.tratamientoId, objetivo.sesion.id)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: (actualizado) => {
+          this.sesionPorEliminar.set(null);
+          if (actualizado) {
+            this.reemplazar(actualizado);
+          } else {
+            this.cargar();
+          }
+          this.notificaciones.exito('Sesión eliminada');
+        },
+        error: (fallo: ErrorApi) => {
+          this.sesionPorEliminar.set(null);
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar la sesión');
+        },
+      });
   }
 
   /* -------------------------------- Eliminar ----------------------------- */
@@ -486,21 +517,22 @@ export class TratamientosComponent implements OnInit {
     }
 
     this.guardando.set(true);
-    this.tratamientoService.eliminar(objetivo.id).subscribe({
-      next: () => {
-        this.guardando.set(false);
-        this.porEliminar.set(null);
-        this.tratamientos.update((lista) => lista.filter((t) => t.id !== objetivo.id));
-        this.notificaciones.exito('Tratamiento eliminado');
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        this.porEliminar.set(null);
-        // El backend responde 400 cuando el tratamiento ya tiene pagos registrados.
-        const mensaje = fallo?.mensaje ?? 'No se pudo eliminar el tratamiento';
-        this.notificaciones.error(mensaje);
-        this.aviso.set(mensaje);
-      },
-    });
+    this.tratamientoService
+      .eliminar(objetivo.id)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: () => {
+          this.porEliminar.set(null);
+          this.tratamientos.update((lista) => lista.filter((t) => t.id !== objetivo.id));
+          this.notificaciones.exito('Tratamiento eliminado');
+        },
+        error: (fallo: ErrorApi) => {
+          this.porEliminar.set(null);
+          // El backend responde 400 cuando el tratamiento ya tiene pagos registrados.
+          const mensaje = fallo?.mensaje ?? 'No se pudo eliminar el tratamiento';
+          this.notificaciones.error(mensaje);
+          this.aviso.set(mensaje);
+        },
+      });
   }
 }

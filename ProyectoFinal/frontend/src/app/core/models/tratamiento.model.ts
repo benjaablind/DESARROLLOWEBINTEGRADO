@@ -75,7 +75,8 @@ export interface TratamientoEstadoRequest {
 }
 
 export interface SesionRequest {
-  fecha: string | null;
+  /** Fecha ISO (solo dia). Obligatoria: @NotNull en SesionRequest del backend. */
+  fecha: string;
   descripcion: string;
   observaciones?: string | null;
 }

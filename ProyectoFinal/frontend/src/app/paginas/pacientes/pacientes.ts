@@ -1,15 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  AbstractControl,
+  FormArray,
   FormBuilder,
   FormControl,
   ReactiveFormsModule,
-  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
 import { AuthService } from '../../core/services/auth.service';
 import { PacienteService } from '../../core/services/paciente.service';
@@ -21,37 +20,27 @@ import {
   PacienteRequest,
   PacienteResumen,
 } from '../../core/models/paciente.model';
+import {
+  LONGITUD_MAXIMA_PACIENTE as MAX,
+  dniValido,
+  fechaPasada,
+  sinSoloEspacios,
+  telefonoValido,
+} from '../../core/validators/pacientes.validators';
 
-/** Convierte un texto separado por comas en un arreglo limpio. */
-function aLista(texto: string): string[] {
-  return texto
-    .split(',')
-    .map((parte) => parte.trim())
-    .filter((parte) => parte.length > 0);
-}
+/** Antecedentes que el backend recibe como List<String> (AntecedentesRequest). */
+type CampoLista = 'enfermedades' | 'alergias' | 'medicamentos' | 'habitos';
 
-/** Convierte un arreglo del backend en el texto separado por comas del formulario. */
-function deLista(valores: string[] | null | undefined): string {
-  return (valores ?? []).join(', ');
-}
+const CAMPOS_LISTA: { clave: CampoLista; etiqueta: string; singular: string }[] = [
+  { clave: 'enfermedades', etiqueta: 'Enfermedades', singular: 'enfermedad' },
+  { clave: 'alergias', etiqueta: 'Alergias', singular: 'alergia' },
+  { clave: 'medicamentos', etiqueta: 'Medicamentos', singular: 'medicamento' },
+  { clave: 'habitos', etiqueta: 'Hábitos', singular: 'hábito' },
+];
 
-/** La fecha de nacimiento tiene que ser anterior al dia de hoy. */
-function fechaPasada(control: AbstractControl): ValidationErrors | null {
-  const valor = (control.value ?? '') as string;
-  if (!valor) {
-    return null;
-  }
-
-  const partes = valor.split('-').map((p) => Number(p));
-  if (partes.length !== 3 || partes.some((n) => Number.isNaN(n))) {
-    return { fechaInvalida: true };
-  }
-
-  const fecha = new Date(partes[0], partes[1] - 1, partes[2]);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-
-  return fecha.getTime() < hoy.getTime() ? null : { fechaFutura: true };
+/** Recorta cada elemento y descarta los que quedaron vacios. */
+function limpiarLista(valores: string[]): string[] {
+  return valores.map((valor) => valor.trim()).filter((valor) => valor.length > 0);
 }
 
 /** Listado de pacientes con alta, edicion, cambio de estado y baja. */
@@ -100,24 +89,27 @@ export class PacientesComponent {
 
   protected readonly confirmarBaja = signal<PacienteResumen | null>(null);
 
+  /** Reglas de PacienteRequest.java; las longitudes son las de las columnas. */
   protected readonly formulario = this.fb.nonNullable.group({
-    dni: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
-    nombres: ['', [Validators.required, Validators.maxLength(100)]],
-    apellidos: ['', [Validators.required, Validators.maxLength(100)]],
-    fechaNacimiento: ['', [Validators.required, fechaPasada]],
-    sexo: ['', [Validators.required]],
-    telefono: ['', [Validators.required, Validators.pattern(/^[0-9]{6,15}$/)]],
-    email: ['', [Validators.email]],
-    direccion: ['', [Validators.maxLength(180)]],
-    distrito: ['', [Validators.maxLength(80)]],
-    ciudad: ['', [Validators.maxLength(80)]],
-    enfermedades: [''],
-    alergias: [''],
-    medicamentos: [''],
-    habitos: [''],
-    antecedentesOdontologicos: [''],
-    observaciones: [''],
+    dni: ['', [Validators.required, dniValido()]],
+    nombres: ['', [Validators.required, sinSoloEspacios(), Validators.maxLength(MAX.nombres)]],
+    apellidos: ['', [Validators.required, sinSoloEspacios(), Validators.maxLength(MAX.apellidos)]],
+    fechaNacimiento: ['', [Validators.required, fechaPasada()]],
+    sexo: ['', [Validators.required, Validators.pattern(/^[MF]$/)]],
+    telefono: ['', [Validators.required, telefonoValido()]],
+    email: ['', [Validators.email, Validators.maxLength(MAX.email)]],
+    direccion: ['', [Validators.maxLength(MAX.direccion)]],
+    distrito: ['', [Validators.maxLength(MAX.distrito)]],
+    ciudad: ['', [Validators.maxLength(MAX.ciudad)]],
+    enfermedades: this.fb.nonNullable.array<string>([]),
+    alergias: this.fb.nonNullable.array<string>([]),
+    medicamentos: this.fb.nonNullable.array<string>([]),
+    habitos: this.fb.nonNullable.array<string>([]),
+    antecedentesOdontologicos: ['', [Validators.maxLength(MAX.textoAntecedente)]],
+    observaciones: ['', [Validators.maxLength(MAX.textoAntecedente)]],
   });
+
+  protected readonly camposLista = CAMPOS_LISTA;
 
   protected get c() {
     return this.formulario.controls;
@@ -144,17 +136,16 @@ export class PacientesComponent {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.pacientes.listar(texto || undefined, estado || undefined).subscribe({
-      next: (filas) => {
-        this.lista.set(filas);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.lista.set([]);
-        this.error.set(fallo?.mensaje ?? 'No se pudo cargar el listado de pacientes');
-        this.cargando.set(false);
-      },
-    });
+    this.pacientes
+      .listar(texto || undefined, estado || undefined)
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: (filas) => this.lista.set(filas),
+        error: (fallo: ErrorApi) => {
+          this.lista.set([]);
+          this.error.set(fallo?.mensaje ?? 'No se pudo cargar el listado de pacientes');
+        },
+      });
   }
 
   protected limpiarFiltros(): void {
@@ -166,24 +157,11 @@ export class PacientesComponent {
   /* ---------------------------- Alta y edicion -------------------------- */
 
   protected abrirCreacion(): void {
-    this.formulario.reset({
-      dni: '',
-      nombres: '',
-      apellidos: '',
-      fechaNacimiento: '',
-      sexo: '',
-      telefono: '',
-      email: '',
-      direccion: '',
-      distrito: '',
-      ciudad: '',
-      enfermedades: '',
-      alergias: '',
-      medicamentos: '',
-      habitos: '',
-      antecedentesOdontologicos: '',
-      observaciones: '',
-    });
+    // reset() no cambia cuantos elementos tiene un FormArray: se vacian antes.
+    for (const campo of CAMPOS_LISTA) {
+      this.elementos(campo.clave).clear();
+    }
+    this.formulario.reset();
     this.editandoId.set(null);
     this.errorFormulario.set(null);
     this.cargandoFicha.set(false);
@@ -196,16 +174,14 @@ export class PacientesComponent {
     this.formularioAbierto.set(true);
     this.cargandoFicha.set(true);
 
-    this.pacientes.buscarPorId(fila.id).subscribe({
-      next: (paciente) => {
-        this.volcarEnFormulario(paciente);
-        this.cargandoFicha.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.cargandoFicha.set(false);
-        this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo cargar la ficha del paciente');
-      },
-    });
+    this.pacientes
+      .buscarPorId(fila.id)
+      .pipe(finalize(() => this.cargandoFicha.set(false)))
+      .subscribe({
+        next: (paciente) => this.volcarEnFormulario(paciente),
+        error: (fallo: ErrorApi) =>
+          this.errorFormulario.set(fallo?.mensaje ?? 'No se pudo cargar la ficha del paciente'),
+      });
   }
 
   protected cerrarFormulario(): void {
@@ -233,9 +209,8 @@ export class PacientesComponent {
 
     const peticion = id === null ? this.pacientes.crear(datos) : this.pacientes.actualizar(id, datos);
 
-    peticion.subscribe({
+    peticion.pipe(finalize(() => this.guardando.set(false))).subscribe({
       next: (paciente) => {
-        this.guardando.set(false);
         this.notificaciones.exito(
           id === null
             ? `Paciente ${paciente.nombreCompleto} registrado correctamente`
@@ -245,7 +220,6 @@ export class PacientesComponent {
         this.cargar();
       },
       error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
         const mensaje = fallo?.mensaje ?? 'No se pudo guardar el paciente';
         this.errorFormulario.set(mensaje);
         this.notificaciones.error(mensaje);
@@ -263,21 +237,21 @@ export class PacientesComponent {
     const nuevo: EstadoPaciente = fila.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
     this.accionEnCurso.set(fila.id);
 
-    this.pacientes.cambiarEstado(fila.id, nuevo).subscribe({
-      next: () => {
-        this.accionEnCurso.set(null);
-        this.notificaciones.exito(
-          nuevo === 'ACTIVO'
-            ? `${fila.nombreCompleto} fue activado`
-            : `${fila.nombreCompleto} fue desactivado`,
-        );
-        this.cargar();
-      },
-      error: (fallo: ErrorApi) => {
-        this.accionEnCurso.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo cambiar el estado del paciente');
-      },
-    });
+    this.pacientes
+      .cambiarEstado(fila.id, nuevo)
+      .pipe(finalize(() => this.accionEnCurso.set(null)))
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(
+            nuevo === 'ACTIVO'
+              ? `${fila.nombreCompleto} fue activado`
+              : `${fila.nombreCompleto} fue desactivado`,
+          );
+          this.cargar();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo cambiar el estado del paciente'),
+      });
   }
 
   protected pedirBaja(fila: PacienteResumen): void {
@@ -296,19 +270,38 @@ export class PacientesComponent {
 
     this.accionEnCurso.set(fila.id);
 
-    this.pacientes.eliminar(fila.id).subscribe({
-      next: () => {
-        this.accionEnCurso.set(null);
-        this.confirmarBaja.set(null);
-        this.notificaciones.exito(`Paciente ${fila.nombreCompleto} eliminado`);
-        this.cargar();
-      },
-      error: (fallo: ErrorApi) => {
-        this.accionEnCurso.set(null);
-        this.confirmarBaja.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar el paciente');
-      },
-    });
+    this.pacientes
+      .eliminar(fila.id)
+      .pipe(
+        finalize(() => {
+          this.accionEnCurso.set(null);
+          this.confirmarBaja.set(null);
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(`Paciente ${fila.nombreCompleto} eliminado`);
+          this.cargar();
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar el paciente'),
+      });
+  }
+
+  /* ---------------------- Listas de antecedentes ------------------------ */
+
+  protected elementos(clave: CampoLista): FormArray<FormControl<string>> {
+    return this.formulario.controls[clave];
+  }
+
+  protected agregarElemento(clave: CampoLista, valor = ''): void {
+    this.elementos(clave).push(
+      this.fb.nonNullable.control(valor, [Validators.maxLength(MAX.elementoAntecedente)]),
+    );
+  }
+
+  protected quitarElemento(clave: CampoLista, indice: number): void {
+    this.elementos(clave).removeAt(indice);
   }
 
   /* ------------------------------- Apoyo -------------------------------- */
@@ -326,7 +319,15 @@ export class PacientesComponent {
   }
 
   private volcarEnFormulario(paciente: Paciente): void {
-    this.formulario.setValue({
+    // Un FormArray necesita un control por elemento antes de recibir valores.
+    for (const campo of CAMPOS_LISTA) {
+      this.elementos(campo.clave).clear();
+      for (const valor of paciente.antecedentes?.[campo.clave] ?? []) {
+        this.agregarElemento(campo.clave, valor);
+      }
+    }
+
+    this.formulario.patchValue({
       dni: paciente.dni ?? '',
       nombres: paciente.nombres ?? '',
       apellidos: paciente.apellidos ?? '',
@@ -337,10 +338,6 @@ export class PacientesComponent {
       direccion: paciente.direccion ?? '',
       distrito: paciente.distrito ?? '',
       ciudad: paciente.ciudad ?? '',
-      enfermedades: deLista(paciente.antecedentes?.enfermedades),
-      alergias: deLista(paciente.antecedentes?.alergias),
-      medicamentos: deLista(paciente.antecedentes?.medicamentos),
-      habitos: deLista(paciente.antecedentes?.habitos),
       antecedentesOdontologicos: paciente.antecedentes?.antecedentesOdontologicos ?? '',
       observaciones: paciente.antecedentes?.observaciones ?? '',
     });
@@ -360,10 +357,10 @@ export class PacientesComponent {
       distrito: this.opcional(v.distrito),
       ciudad: this.opcional(v.ciudad),
       antecedentes: {
-        enfermedades: aLista(v.enfermedades),
-        alergias: aLista(v.alergias),
-        medicamentos: aLista(v.medicamentos),
-        habitos: aLista(v.habitos),
+        enfermedades: limpiarLista(v.enfermedades),
+        alergias: limpiarLista(v.alergias),
+        medicamentos: limpiarLista(v.medicamentos),
+        habitos: limpiarLista(v.habitos),
         antecedentesOdontologicos: this.opcional(v.antecedentesOdontologicos),
         observaciones: this.opcional(v.observaciones),
       },

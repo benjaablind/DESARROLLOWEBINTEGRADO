@@ -85,3 +85,14 @@ svg {
   line-height: 1.3;
   min-width: 0;
 }
+
+/* Listas de antecedentes (FormArray): un campo por elemento. */
+.lista-antecedente > .btn {
+  align-self: flex-start;
+}
+
+.elemento-lista {
+  display: flex;
+  align-items: center;
+  gap: var(--e-2);
+}

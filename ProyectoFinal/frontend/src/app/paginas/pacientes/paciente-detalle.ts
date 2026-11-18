@@ -8,8 +8,15 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormArray,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 import { AuthService } from '../../core/services/auth.service';
 import { PacienteService } from '../../core/services/paciente.service';
@@ -21,18 +28,21 @@ import {
   EstadoPaciente,
   Paciente,
 } from '../../core/models/paciente.model';
+import { LONGITUD_MAXIMA_PACIENTE as MAX } from '../../core/validators/pacientes.validators';
 
-/** Convierte un texto separado por comas en un arreglo limpio. */
-function aLista(texto: string): string[] {
-  return texto
-    .split(',')
-    .map((parte) => parte.trim())
-    .filter((parte) => parte.length > 0);
-}
+/** Antecedentes que el backend recibe como List<String> (AntecedentesRequest). */
+type CampoLista = 'enfermedades' | 'alergias' | 'medicamentos' | 'habitos';
 
-/** Convierte un arreglo del backend en el texto separado por comas del formulario. */
-function deLista(valores: string[] | null | undefined): string {
-  return (valores ?? []).join(', ');
+const CAMPOS_LISTA: { clave: CampoLista; etiqueta: string; singular: string }[] = [
+  { clave: 'enfermedades', etiqueta: 'Enfermedades', singular: 'enfermedad' },
+  { clave: 'alergias', etiqueta: 'Alergias', singular: 'alergia' },
+  { clave: 'medicamentos', etiqueta: 'Medicamentos', singular: 'medicamento' },
+  { clave: 'habitos', etiqueta: 'Hábitos', singular: 'hábito' },
+];
+
+/** Recorta cada elemento y descarta los que quedaron vacios. */
+function limpiarLista(valores: string[]): string[] {
+  return valores.map((valor) => valor.trim()).filter((valor) => valor.length > 0);
 }
 
 /** Enlace rapido a los demas modulos, siempre con el paciente preseleccionado. */
@@ -121,14 +131,21 @@ export class PacienteDetalleComponent {
   /** Parametro de consulta que reciben las demas pantallas. */
   protected readonly parametroPaciente = computed(() => ({ pacienteId: this.idNumero() }));
 
+  /** Mismo contrato que AntecedentesRequest.java; las longitudes son las de las columnas. */
   protected readonly formulario = this.fb.nonNullable.group({
-    enfermedades: [''],
-    alergias: [''],
-    medicamentos: [''],
-    habitos: [''],
-    antecedentesOdontologicos: [''],
-    observaciones: [''],
+    enfermedades: this.fb.nonNullable.array<string>([]),
+    alergias: this.fb.nonNullable.array<string>([]),
+    medicamentos: this.fb.nonNullable.array<string>([]),
+    habitos: this.fb.nonNullable.array<string>([]),
+    antecedentesOdontologicos: ['', [Validators.maxLength(MAX.textoAntecedente)]],
+    observaciones: ['', [Validators.maxLength(MAX.textoAntecedente)]],
   });
+
+  protected readonly camposLista = CAMPOS_LISTA;
+
+  protected get c() {
+    return this.formulario.controls;
+  }
 
   constructor() {
     effect(() => {
@@ -157,21 +174,20 @@ export class PacienteDetalleComponent {
     this.cargando.set(true);
     this.error.set(null);
 
-    this.pacientes.buscarPorId(id).subscribe({
-      next: (ficha) => {
-        this.paciente.set(ficha);
-        this.cargando.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.paciente.set(null);
-        this.error.set(
-          fallo?.estado === 404
-            ? 'El paciente solicitado no existe o fue eliminado.'
-            : (fallo?.mensaje ?? 'No se pudo cargar la ficha del paciente'),
-        );
-        this.cargando.set(false);
-      },
-    });
+    this.pacientes
+      .buscarPorId(id)
+      .pipe(finalize(() => this.cargando.set(false)))
+      .subscribe({
+        next: (ficha) => this.paciente.set(ficha),
+        error: (fallo: ErrorApi) => {
+          this.paciente.set(null);
+          this.error.set(
+            fallo?.estado === 404
+              ? 'El paciente solicitado no existe o fue eliminado.'
+              : (fallo?.mensaje ?? 'No se pudo cargar la ficha del paciente'),
+          );
+        },
+      });
   }
 
   /* --------------------------- Antecedentes ----------------------------- */
@@ -182,14 +198,19 @@ export class PacienteDetalleComponent {
       return;
     }
 
-    this.formulario.setValue({
-      enfermedades: deLista(ficha.antecedentes?.enfermedades),
-      alergias: deLista(ficha.antecedentes?.alergias),
-      medicamentos: deLista(ficha.antecedentes?.medicamentos),
-      habitos: deLista(ficha.antecedentes?.habitos),
+    // reset() tambien limpia el estado touched de una edicion anterior.
+    this.formulario.reset({
       antecedentesOdontologicos: ficha.antecedentes?.antecedentesOdontologicos ?? '',
       observaciones: ficha.antecedentes?.observaciones ?? '',
     });
+
+    // Un FormArray necesita un control por elemento: se reconstruye cada lista.
+    for (const campo of CAMPOS_LISTA) {
+      this.elementos(campo.clave).clear();
+      for (const valor of this.listaDe(ficha, campo.clave)) {
+        this.agregarElemento(campo.clave, valor);
+      }
+    }
 
     this.errorFormulario.set(null);
     this.editando.set(true);
@@ -206,12 +227,18 @@ export class PacienteDetalleComponent {
       return;
     }
 
+    if (this.formulario.invalid) {
+      this.formulario.markAllAsTouched();
+      this.errorFormulario.set('Revise los campos marcados en rojo.');
+      return;
+    }
+
     const v = this.formulario.getRawValue();
     const datos: AntecedentesRequest = {
-      enfermedades: aLista(v.enfermedades),
-      alergias: aLista(v.alergias),
-      medicamentos: aLista(v.medicamentos),
-      habitos: aLista(v.habitos),
+      enfermedades: limpiarLista(v.enfermedades),
+      alergias: limpiarLista(v.alergias),
+      medicamentos: limpiarLista(v.medicamentos),
+      habitos: limpiarLista(v.habitos),
       antecedentesOdontologicos: this.opcional(v.antecedentesOdontologicos),
       observaciones: this.opcional(v.observaciones),
     };
@@ -219,20 +246,37 @@ export class PacienteDetalleComponent {
     this.guardando.set(true);
     this.errorFormulario.set(null);
 
-    this.pacientes.actualizarAntecedentes(id, datos).subscribe({
-      next: (ficha) => {
-        this.paciente.set(ficha);
-        this.guardando.set(false);
-        this.editando.set(false);
-        this.notificaciones.exito('Antecedentes actualizados correctamente');
-      },
-      error: (fallo: ErrorApi) => {
-        this.guardando.set(false);
-        const mensaje = fallo?.mensaje ?? 'No se pudieron actualizar los antecedentes';
-        this.errorFormulario.set(mensaje);
-        this.notificaciones.error(mensaje);
-      },
-    });
+    this.pacientes
+      .actualizarAntecedentes(id, datos)
+      .pipe(finalize(() => this.guardando.set(false)))
+      .subscribe({
+        next: (ficha) => {
+          this.paciente.set(ficha);
+          this.editando.set(false);
+          this.notificaciones.exito('Antecedentes actualizados correctamente');
+        },
+        error: (fallo: ErrorApi) => {
+          const mensaje = fallo?.mensaje ?? 'No se pudieron actualizar los antecedentes';
+          this.errorFormulario.set(mensaje);
+          this.notificaciones.error(mensaje);
+        },
+      });
+  }
+
+  /* ---------------------- Listas de antecedentes ------------------------ */
+
+  protected elementos(clave: CampoLista): FormArray<FormControl<string>> {
+    return this.formulario.controls[clave];
+  }
+
+  protected agregarElemento(clave: CampoLista, valor = ''): void {
+    this.elementos(clave).push(
+      this.fb.nonNullable.control(valor, [Validators.maxLength(MAX.elementoAntecedente)]),
+    );
+  }
+
+  protected quitarElemento(clave: CampoLista, indice: number): void {
+    this.elementos(clave).removeAt(indice);
   }
 
   /* ------------------------------- Apoyo -------------------------------- */

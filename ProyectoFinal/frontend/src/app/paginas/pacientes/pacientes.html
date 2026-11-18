@@ -85,7 +85,7 @@
             />
             @if (c.dni.touched && c.dni.hasError('required')) {
               <span class="form-error">El documento es obligatorio.</span>
-            } @else if (c.dni.touched && c.dni.hasError('pattern')) {
+            } @else if (c.dni.touched && c.dni.hasError('dniInvalido')) {
               <span class="form-error">Debe tener exactamente 8 dígitos.</span>
             }
           </div>
@@ -95,7 +95,7 @@
             <input id="fechaNacimiento" type="date" formControlName="fechaNacimiento" />
             @if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('required')) {
               <span class="form-error">La fecha de nacimiento es obligatoria.</span>
-            } @else if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('fechaFutura')) {
+            } @else if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('fechaNoPasada')) {
               <span class="form-error">La fecha debe ser anterior a hoy.</span>
             } @else if (c.fechaNacimiento.touched && c.fechaNacimiento.hasError('fechaInvalida')) {
               <span class="form-error">La fecha no es válida.</span>
@@ -107,8 +107,10 @@
             <input id="nombres" type="text" formControlName="nombres" autocomplete="off" />
             @if (c.nombres.touched && c.nombres.hasError('required')) {
               <span class="form-error">Los nombres son obligatorios.</span>
+            } @else if (c.nombres.touched && c.nombres.hasError('soloEspacios')) {
+              <span class="form-error">Los nombres no pueden ser solo espacios.</span>
             } @else if (c.nombres.touched && c.nombres.hasError('maxlength')) {
-              <span class="form-error">Máximo 100 caracteres.</span>
+              <span class="form-error">Máximo 80 caracteres.</span>
             }
           </div>
 
@@ -117,8 +119,10 @@
             <input id="apellidos" type="text" formControlName="apellidos" autocomplete="off" />
             @if (c.apellidos.touched && c.apellidos.hasError('required')) {
               <span class="form-error">Los apellidos son obligatorios.</span>
+            } @else if (c.apellidos.touched && c.apellidos.hasError('soloEspacios')) {
+              <span class="form-error">Los apellidos no pueden ser solo espacios.</span>
             } @else if (c.apellidos.touched && c.apellidos.hasError('maxlength')) {
-              <span class="form-error">Máximo 100 caracteres.</span>
+              <span class="form-error">Máximo 80 caracteres.</span>
             }
           </div>
 
@@ -131,6 +135,8 @@
             </select>
             @if (c.sexo.touched && c.sexo.hasError('required')) {
               <span class="form-error">Indique el sexo del paciente.</span>
+            } @else if (c.sexo.touched && c.sexo.hasError('pattern')) {
+              <span class="form-error">Seleccione Masculino o Femenino.</span>
             }
           </div>
 
@@ -139,7 +145,7 @@
             <input id="telefono" type="tel" formControlName="telefono" inputmode="numeric" />
             @if (c.telefono.touched && c.telefono.hasError('required')) {
               <span class="form-error">El teléfono es obligatorio.</span>
-            } @else if (c.telefono.touched && c.telefono.hasError('pattern')) {
+            } @else if (c.telefono.touched && c.telefono.hasError('telefonoInvalido')) {
               <span class="form-error">Solo dígitos, entre 6 y 15.</span>
             }
           </div>
@@ -149,6 +155,8 @@
             <input id="email" type="email" formControlName="email" autocomplete="off" />
             @if (c.email.touched && c.email.hasError('email')) {
               <span class="form-error">El correo no tiene un formato válido.</span>
+            } @else if (c.email.touched && c.email.hasError('maxlength')) {
+              <span class="form-error">Máximo 120 caracteres.</span>
             } @else {
               <span class="form-ayuda">Opcional.</span>
             }
@@ -157,45 +165,75 @@
           <div class="form-campo">
             <label for="direccion">Dirección</label>
             <input id="direccion" type="text" formControlName="direccion" autocomplete="off" />
+            @if (c.direccion.touched && c.direccion.hasError('maxlength')) {
+              <span class="form-error">Máximo 200 caracteres.</span>
+            }
           </div>
 
           <div class="form-campo">
             <label for="distrito">Distrito</label>
             <input id="distrito" type="text" formControlName="distrito" autocomplete="off" />
+            @if (c.distrito.touched && c.distrito.hasError('maxlength')) {
+              <span class="form-error">Máximo 80 caracteres.</span>
+            }
           </div>
 
           <div class="form-campo">
             <label for="ciudad">Ciudad</label>
             <input id="ciudad" type="text" formControlName="ciudad" autocomplete="off" />
+            @if (c.ciudad.touched && c.ciudad.hasError('maxlength')) {
+              <span class="form-error">Máximo 80 caracteres.</span>
+            }
           </div>
         </div>
 
         <h3 class="titulo-seccion">Antecedentes clínicos</h3>
         <p class="form-ayuda ayuda-listas">
-          En enfermedades, alergias, medicamentos y hábitos escriba los elementos separados por
-          comas. Ejemplo: <span class="mono">Diabetes, Hipertensión</span>
+          Agregue un elemento por cada enfermedad, alergia, medicamento o hábito. Los elementos
+          vacíos no se guardan.
         </p>
 
         <div class="grid-2">
-          <div class="form-campo">
-            <label for="enfermedades">Enfermedades</label>
-            <input id="enfermedades" type="text" formControlName="enfermedades" />
-          </div>
-
-          <div class="form-campo">
-            <label for="alergias">Alergias</label>
-            <input id="alergias" type="text" formControlName="alergias" />
-          </div>
-
-          <div class="form-campo">
-            <label for="medicamentos">Medicamentos</label>
-            <input id="medicamentos" type="text" formControlName="medicamentos" />
-          </div>
-
-          <div class="form-campo">
-            <label for="habitos">Hábitos</label>
-            <input id="habitos" type="text" formControlName="habitos" />
-          </div>
+          @for (campo of camposLista; track campo.clave) {
+            <div
+              class="form-campo lista-antecedente"
+              role="group"
+              [attr.aria-labelledby]="'etiqueta-' + campo.clave"
+              [formArrayName]="campo.clave"
+            >
+              <span class="form-etiqueta" [id]="'etiqueta-' + campo.clave">{{
+                campo.etiqueta
+              }}</span>
+              @for (elemento of elementos(campo.clave).controls; track elemento; let i = $index) {
+                <div class="elemento-lista">
+                  <input
+                    type="text"
+                    [formControlName]="i"
+                    [attr.aria-label]="campo.etiqueta + ' ' + (i + 1)"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-fantasma btn-sm"
+                    (click)="quitarElemento(campo.clave, i)"
+                  >
+                    Quitar
+                  </button>
+                </div>
+                @if (elemento.touched && elemento.hasError('maxlength')) {
+                  <span class="form-error">Máximo 200 caracteres por elemento.</span>
+                }
+              } @empty {
+                <span class="form-ayuda">Sin registros.</span>
+              }
+              <button
+                type="button"
+                class="btn btn-secundario btn-sm"
+                (click)="agregarElemento(campo.clave)"
+              >
+                Agregar {{ campo.singular }}
+              </button>
+            </div>
+          }
         </div>
 
         <div class="form-campo">
@@ -205,11 +243,19 @@
             formControlName="antecedentesOdontologicos"
             rows="3"
           ></textarea>
+          @if (
+            c.antecedentesOdontologicos.touched && c.antecedentesOdontologicos.hasError('maxlength')
+          ) {
+            <span class="form-error">Máximo 1000 caracteres.</span>
+          }
         </div>
 
         <div class="form-campo">
           <label for="observaciones">Observaciones</label>
           <textarea id="observaciones" formControlName="observaciones" rows="3"></textarea>
+          @if (c.observaciones.touched && c.observaciones.hasError('maxlength')) {
+            <span class="form-error">Máximo 1000 caracteres.</span>
+          }
         </div>
 
         <div class="form-acciones">

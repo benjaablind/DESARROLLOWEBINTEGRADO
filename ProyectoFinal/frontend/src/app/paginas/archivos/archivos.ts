@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   inject,
@@ -8,10 +9,25 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  FormArray,
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { distinctUntilChanged } from 'rxjs/operators';
+import { from, of } from 'rxjs';
+import { catchError, concatMap, distinctUntilChanged, finalize, map, tap, toArray } from 'rxjs/operators';
 
+import {
+  DESCRIPCION_MAXIMA_ARCHIVO,
+  EXTENSIONES_ARCHIVO,
+  EXTENSIONES_IMAGEN,
+  archivoPermitidoValidator,
+  extensionDe,
+} from '../../core/validators/archivos.validators';
 import { ArchivoService } from '../../core/services/archivo.service';
 import { PacienteService } from '../../core/services/paciente.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -35,24 +51,19 @@ type ArchivoVista = Archivo & {
   urlDescarga?: string | null;
 };
 
-/** Extensiones que acepta el backend. */
-const EXTENSIONES_PERMITIDAS = [
-  'jpg',
-  'jpeg',
-  'png',
-  'gif',
-  'bmp',
-  'webp',
-  'pdf',
-  'doc',
-  'docx',
-  'txt',
-];
+/** Una fila del FormArray de subida: un archivo con sus propios metadatos. */
+type FilaArchivo = FormGroup<{
+  archivo: FormControl<File | null>;
+  tipo: FormControl<TipoArchivo>;
+  descripcion: FormControl<string>;
+}>;
 
-const EXTENSIONES_IMAGEN = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-
-/** Tope de 10 MB, el mismo que valida el backend. */
-const TAMANO_MAXIMO = 10 * 1024 * 1024;
+/** Resultado de subir una fila: el archivo creado o el error del backend. */
+interface ResultadoSubida {
+  fila: FilaArchivo;
+  subido: Archivo | null;
+  fallo: ErrorApi | null;
+}
 
 /** Geometria del icono que representa cada tipo de archivo. */
 const ICONOS: Record<TipoArchivo, string> = {
@@ -92,16 +103,30 @@ export class ArchivosComponent {
   private readonly auth = inject(AuthService);
   private readonly notificaciones = inject(NotificacionService);
   private readonly ruta = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly entradaArchivo =
     viewChild<ElementRef<HTMLInputElement>>('entradaArchivo');
 
   protected readonly tipos = TIPOS_ARCHIVO;
   protected readonly etiquetasTipo = ETIQUETAS_TIPO_ARCHIVO;
+  protected readonly extensionesPermitidas = EXTENSIONES_ARCHIVO;
+  protected readonly descripcionMaxima = DESCRIPCION_MAXIMA_ARCHIVO;
+  protected readonly aceptaArchivos = EXTENSIONES_ARCHIVO.map((e) => `.${e}`).join(',');
 
   /* ------------------------------- Estado -------------------------------- */
 
   protected readonly lista = signal<ArchivoVista[]>([]);
+
+  /**
+   * URLs blob: de las miniaturas, por id de archivo. La descarga esta protegida
+   * con JWT y un <img src> no envia el token, asi que el binario se pide con
+   * HttpClient (pasa por el interceptor) y se muestra desde memoria.
+   */
+  protected readonly vistasPrevias = signal<Record<number, string>>({});
+  protected readonly descargandoId = signal<number | null>(null);
+  /** Evita que una respuesta de una carga anterior pinte miniaturas viejas. */
+  private generacionVistas = 0;
   protected readonly cargando = signal(false);
   protected readonly error = signal<string | null>(null);
 
@@ -130,12 +155,16 @@ export class ArchivosComponent {
   protected readonly panelSubida = signal(false);
   protected readonly subiendo = signal(false);
   protected readonly errorSubida = signal<string | null>(null);
-  protected readonly seleccionado = signal<File | null>(null);
+  /** Avance de una subida de varios archivos, que se envian uno por uno. */
+  protected readonly progreso = signal<{ hechos: number; total: number } | null>(null);
 
-  protected readonly formularioSubida = this.fb.nonNullable.group({
-    pacienteId: ['', [Validators.required]],
-    tipo: ['RADIOGRAFIA' as TipoArchivo, [Validators.required]],
-    descripcion: ['', [Validators.maxLength(255)]],
+  /**
+   * Un paciente y una lista dinamica de archivos (FormArray, semana 13).
+   * El backend recibe un archivo por peticion, asi que cada fila se sube aparte.
+   */
+  protected readonly formularioSubida = this.fb.group({
+    pacienteId: this.fb.nonNullable.control('', [Validators.required]),
+    archivos: this.fb.array<FilaArchivo>([], [Validators.required]),
   });
 
   /* ------------------------- Edicion y eliminacion ----------------------- */
@@ -146,7 +175,7 @@ export class ArchivosComponent {
 
   protected readonly formularioEdicion = this.fb.nonNullable.group({
     tipo: ['DOCUMENTO' as TipoArchivo, [Validators.required]],
-    descripcion: ['', [Validators.maxLength(255)]],
+    descripcion: ['', [Validators.maxLength(DESCRIPCION_MAXIMA_ARCHIVO)]],
   });
 
   protected readonly porEliminar = signal<ArchivoVista | null>(null);
@@ -174,6 +203,8 @@ export class ArchivosComponent {
 
     this.cargarPacientes();
     this.cargar();
+
+    this.destroyRef.onDestroy(() => this.liberarVistasPrevias());
   }
 
   /* ------------------------------ Consultas ------------------------------ */
@@ -182,17 +213,16 @@ export class ArchivosComponent {
     this.cargandoPacientes.set(true);
     this.errorPacientes.set(null);
 
-    this.pacientesApi.listar().subscribe({
-      next: (filas) => {
-        this.pacientes.set(filas);
-        this.cargandoPacientes.set(false);
-      },
-      error: (fallo: ErrorApi) => {
-        this.pacientes.set([]);
-        this.cargandoPacientes.set(false);
-        this.errorPacientes.set(fallo?.mensaje ?? 'No se pudo cargar la lista de pacientes');
-      },
-    });
+    this.pacientesApi
+      .listar()
+      .pipe(finalize(() => this.cargandoPacientes.set(false)))
+      .subscribe({
+        next: (filas) => this.pacientes.set(filas),
+        error: (fallo: ErrorApi) => {
+          this.pacientes.set([]);
+          this.errorPacientes.set(fallo?.mensaje ?? 'No se pudo cargar la lista de pacientes');
+        },
+      });
   }
 
   protected cargar(): void {
@@ -207,20 +237,75 @@ export class ArchivosComponent {
         ? this.archivos.listarPorPaciente(pacienteId, tipo || undefined)
         : this.archivos.listar({ tipo: tipo || undefined });
 
-    peticion.subscribe({
+    peticion.pipe(finalize(() => this.cargando.set(false))).subscribe({
       next: (filas) => {
         this.lista.set(filas as ArchivoVista[]);
-        this.cargando.set(false);
+        this.cargarVistasPrevias(filas as ArchivoVista[]);
       },
       error: (fallo: ErrorApi) => {
         this.lista.set([]);
+        this.liberarVistasPrevias();
         this.error.set(fallo?.mensaje ?? 'No se pudieron cargar los archivos');
-        this.cargando.set(false);
       },
     });
   }
 
+  private cargarVistasPrevias(filas: ArchivoVista[]): void {
+    this.liberarVistasPrevias();
+    const generacion = ++this.generacionVistas;
+
+    for (const archivo of filas.filter((a) => this.esImagen(a))) {
+      this.archivos.descargar(archivo.id).subscribe({
+        next: (blob) => {
+          if (generacion !== this.generacionVistas) {
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          this.vistasPrevias.update((actuales) => ({ ...actuales, [archivo.id]: url }));
+        },
+        // Sin miniatura se muestra el icono del tipo; no hace falta avisar.
+        error: () => undefined,
+      });
+    }
+  }
+
+  private liberarVistasPrevias(): void {
+    for (const url of Object.values(this.vistasPrevias())) {
+      URL.revokeObjectURL(url);
+    }
+    this.vistasPrevias.set({});
+  }
+
+  /** Descarga con el token (via HttpClient) y entrega el archivo con su nombre original. */
+  protected descargar(archivo: ArchivoVista): void {
+    if (this.descargandoId() !== null) {
+      return;
+    }
+    this.descargandoId.set(archivo.id);
+
+    this.archivos
+      .descargar(archivo.id)
+      .pipe(finalize(() => this.descargandoId.set(null)))
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const enlace = document.createElement('a');
+          enlace.href = url;
+          enlace.download = archivo.nombreOriginal;
+          enlace.click();
+          setTimeout(() => URL.revokeObjectURL(url));
+        },
+        error: (fallo: ErrorApi) =>
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo descargar el archivo'),
+      });
+  }
+
   /* -------------------------------- Subida ------------------------------- */
+
+  /** Filas del FormArray de subida. */
+  protected get filas(): FormArray<FilaArchivo> {
+    return this.formularioSubida.controls.archivos;
+  }
 
   protected abrirSubida(): void {
     this.errorSubida.set(null);
@@ -231,38 +316,49 @@ export class ArchivosComponent {
   protected cerrarSubida(): void {
     this.panelSubida.set(false);
     this.errorSubida.set(null);
-    this.limpiarSeleccion();
+    this.filas.clear();
+    this.formularioSubida.markAsUntouched();
+    this.limpiarEntrada();
   }
 
-  protected alElegirArchivo(evento: Event): void {
+  /**
+   * Cada archivo elegido se agrega como una fila. Los que no cumplen las
+   * reglas tambien se agregan, marcados con su error, para que el usuario
+   * vea por que no se pueden subir y los quite.
+   */
+  protected alElegirArchivos(evento: Event): void {
     const entrada = evento.target as HTMLInputElement;
-    const archivo = entrada.files && entrada.files.length > 0 ? entrada.files[0] : null;
+    const elegidos = entrada.files ? Array.from(entrada.files) : [];
 
-    if (!archivo) {
-      this.seleccionado.set(null);
-      return;
-    }
-
-    const extension = this.extensionDe(archivo.name);
-
-    if (!EXTENSIONES_PERMITIDAS.includes(extension)) {
-      this.notificaciones.error(
-        `La extensión .${extension || '?'} no está permitida. Use: ${EXTENSIONES_PERMITIDAS.join(', ')}.`,
-      );
-      this.limpiarSeleccion();
-      return;
-    }
-
-    if (archivo.size > TAMANO_MAXIMO) {
-      this.notificaciones.error(
-        `El archivo pesa ${this.tamanoLegible(archivo.size)} y el máximo permitido es 10 MB.`,
-      );
-      this.limpiarSeleccion();
-      return;
+    for (const archivo of elegidos) {
+      const fila = this.crearFila(archivo);
+      fila.controls.archivo.markAsTouched();
+      this.filas.push(fila);
     }
 
     this.errorSubida.set(null);
-    this.seleccionado.set(archivo);
+    // Se vacia el input para poder volver a elegir el mismo archivo.
+    this.limpiarEntrada();
+  }
+
+  protected quitarFila(indice: number): void {
+    this.filas.removeAt(indice);
+  }
+
+  private crearFila(archivo: File): FilaArchivo {
+    const esImagen = EXTENSIONES_IMAGEN.includes(extensionDe(archivo.name));
+    return this.fb.group({
+      archivo: this.fb.control<File | null>(archivo, [
+        Validators.required,
+        archivoPermitidoValidator(),
+      ]),
+      tipo: this.fb.nonNullable.control<TipoArchivo>(esImagen ? 'RADIOGRAFIA' : 'DOCUMENTO', [
+        Validators.required,
+      ]),
+      descripcion: this.fb.nonNullable.control('', [
+        Validators.maxLength(DESCRIPCION_MAXIMA_ARCHIVO),
+      ]),
+    });
   }
 
   protected subir(): void {
@@ -272,15 +368,13 @@ export class ArchivosComponent {
 
     this.errorSubida.set(null);
 
-    const archivo = this.seleccionado();
-    if (!archivo) {
-      this.errorSubida.set('Seleccione el archivo que desea subir.');
-      return;
-    }
-
     if (this.formularioSubida.invalid) {
       this.formularioSubida.markAllAsTouched();
-      this.errorSubida.set('Complete el paciente y el tipo de archivo.');
+      this.errorSubida.set(
+        this.filas.length === 0
+          ? 'Agregue al menos un archivo.'
+          : 'Revise el paciente y los archivos marcados antes de subirlos.',
+      );
       return;
     }
 
@@ -289,41 +383,84 @@ export class ArchivosComponent {
       return;
     }
 
-    const v = this.formularioSubida.getRawValue();
-    const pacienteId = Number(v.pacienteId);
-
-    // Quién sube el archivo lo toma el backend del token (no se envía usuarioId).
-    const datos = this.archivos.construirFormData({
-      archivo,
-      pacienteId,
-      tipo: v.tipo,
-      descripcion: v.descripcion.trim() || null,
-    });
+    const pacienteTexto = this.formularioSubida.controls.pacienteId.value;
+    const pacienteId = Number(pacienteTexto);
+    const filas = [...this.filas.controls];
 
     this.subiendo.set(true);
+    this.progreso.set({ hechos: 0, total: filas.length });
 
-    this.archivos.subir(datos).subscribe({
-      next: (subido) => {
-        this.subiendo.set(false);
-        this.notificaciones.exito(`Archivo "${subido.nombreOriginal}" subido correctamente`);
-        this.limpiarSeleccion();
-        this.formularioSubida.controls.descripcion.setValue('');
-        this.panelSubida.set(false);
+    // Uno por uno (concatMap) y sin cortar la serie si uno falla (catchError por fila).
+    // Quien sube el archivo lo toma el backend del token (no se envia usuarioId).
+    from(filas)
+      .pipe(
+        concatMap((fila) => {
+          const v = fila.getRawValue();
+          const datos = this.archivos.construirFormData({
+            archivo: v.archivo as File,
+            pacienteId,
+            tipo: v.tipo,
+            descripcion: v.descripcion.trim() || null,
+          });
+          return this.archivos.subir(datos).pipe(
+            map((subido): ResultadoSubida => ({ fila, subido, fallo: null })),
+            catchError((fallo: ErrorApi) => of<ResultadoSubida>({ fila, subido: null, fallo })),
+            tap(() => this.progreso.update((p) => (p ? { ...p, hechos: p.hechos + 1 } : p))),
+          );
+        }),
+        toArray(),
+        finalize(() => {
+          this.subiendo.set(false);
+          this.progreso.set(null);
+        }),
+      )
+      .subscribe((resultados) => this.alTerminarSubida(resultados, pacienteTexto));
+  }
 
-        // El listado se posiciona en el paciente del archivo recien subido.
-        if (this.filtroPaciente.value !== v.pacienteId) {
-          this.filtroPaciente.setValue(v.pacienteId);
-        } else {
-          this.cargar();
-        }
-      },
-      error: (fallo: ErrorApi) => {
-        this.subiendo.set(false);
-        const mensaje = fallo?.mensaje ?? 'No se pudo subir el archivo';
-        this.errorSubida.set(mensaje);
-        this.notificaciones.error(mensaje);
-      },
-    });
+  /**
+   * Las filas subidas salen del formulario; las que fallaron se quedan para
+   * reintentar, con el mensaje del backend.
+   */
+  private alTerminarSubida(resultados: ResultadoSubida[], pacienteTexto: string): void {
+    const exitos = resultados.filter((r) => r.subido !== null);
+    const fallos = resultados.filter((r) => r.fallo !== null);
+
+    for (const { fila } of exitos) {
+      const indice = this.filas.controls.indexOf(fila);
+      if (indice >= 0) {
+        this.filas.removeAt(indice);
+      }
+    }
+
+    if (exitos.length > 0) {
+      this.notificaciones.exito(
+        exitos.length === 1
+          ? `Archivo "${exitos[0].subido?.nombreOriginal}" subido correctamente`
+          : `${exitos.length} archivos subidos correctamente`,
+      );
+
+      // El listado se posiciona en el paciente de los archivos recien subidos.
+      if (this.filtroPaciente.value !== pacienteTexto) {
+        this.filtroPaciente.setValue(pacienteTexto);
+      } else {
+        this.cargar();
+      }
+    }
+
+    if (fallos.length === 0) {
+      this.cerrarSubida();
+      return;
+    }
+
+    const detalle = fallos
+      .map((r) => `${r.fila.controls.archivo.value?.name}: ${r.fallo?.mensaje ?? 'error desconocido'}`)
+      .join('; ');
+    const mensaje =
+      exitos.length > 0
+        ? `Se subieron ${exitos.length} de ${resultados.length}. No se pudo subir ${detalle}.`
+        : `No se pudo subir ${detalle}.`;
+    this.errorSubida.set(mensaje);
+    this.notificaciones.error(mensaje);
   }
 
   /* ------------------------- Edicion de metadatos ------------------------ */
@@ -363,15 +500,14 @@ export class ArchivosComponent {
         tipo: v.tipo,
         descripcion: v.descripcion.trim() || null,
       })
+      .pipe(finalize(() => this.guardando.set(false)))
       .subscribe({
         next: () => {
-          this.guardando.set(false);
           this.editando.set(null);
           this.notificaciones.exito('Datos del archivo actualizados');
           this.cargar();
         },
         error: (fallo: ErrorApi) => {
-          this.guardando.set(false);
           const mensaje = fallo?.mensaje ?? 'No se pudo actualizar el archivo';
           this.errorEdicion.set(mensaje);
           this.notificaciones.error(mensaje);
@@ -397,31 +533,31 @@ export class ArchivosComponent {
 
     this.eliminando.set(true);
 
-    this.archivos.eliminar(archivo.id).subscribe({
-      next: () => {
-        this.eliminando.set(false);
-        this.porEliminar.set(null);
-        this.notificaciones.exito(`Archivo "${archivo.nombreOriginal}" eliminado`);
-        this.cargar();
-      },
-      error: (fallo: ErrorApi) => {
-        this.eliminando.set(false);
-        this.porEliminar.set(null);
-        this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar el archivo');
-      },
-    });
+    this.archivos
+      .eliminar(archivo.id)
+      .pipe(
+        finalize(() => {
+          this.eliminando.set(false);
+          this.porEliminar.set(null);
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.notificaciones.exito(`Archivo "${archivo.nombreOriginal}" eliminado`);
+          this.cargar();
+        },
+        error: (fallo: ErrorApi) => {
+          this.notificaciones.error(fallo?.mensaje ?? 'No se pudo eliminar el archivo');
+        },
+      });
   }
 
   /* -------------------------------- Apoyo -------------------------------- */
 
-  protected urlDescarga(archivo: ArchivoVista): string {
-    return archivo.urlDescarga && archivo.urlDescarga.length > 0
-      ? archivo.urlDescarga
-      : this.archivos.urlDescarga(archivo.id);
-  }
-
   protected esImagen(archivo: ArchivoVista): boolean {
-    return EXTENSIONES_IMAGEN.includes(this.extensionDe(archivo.extension || archivo.nombreOriginal));
+    return EXTENSIONES_IMAGEN.includes(
+      (archivo.extension || extensionDe(archivo.nombreOriginal)).toLowerCase(),
+    );
   }
 
   protected icono(tipo: TipoArchivo): string {
@@ -485,17 +621,7 @@ export class ArchivosComponent {
     return resto ? `${fecha} ${resto.slice(0, 5)}` : fecha;
   }
 
-  private extensionDe(nombre: string): string {
-    const limpio = (nombre ?? '').trim().toLowerCase();
-    if (limpio.length === 0) {
-      return '';
-    }
-    const punto = limpio.lastIndexOf('.');
-    return punto >= 0 ? limpio.slice(punto + 1) : limpio;
-  }
-
-  private limpiarSeleccion(): void {
-    this.seleccionado.set(null);
+  private limpiarEntrada(): void {
     const entrada = this.entradaArchivo();
     if (entrada) {
       entrada.nativeElement.value = '';

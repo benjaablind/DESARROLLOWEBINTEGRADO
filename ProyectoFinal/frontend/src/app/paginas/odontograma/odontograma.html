@@ -339,6 +339,12 @@
         }
 
         <form [formGroup]="formulario" (ngSubmit)="registrar()" novalidate>
+          @if (formulario.controls.numeroPieza.touched && formulario.controls.numeroPieza.invalid) {
+            <div class="alerta alerta-error" role="alert">
+              La pieza elegida no existe en la notación FDI.
+            </div>
+          }
+
           <div class="form-campo">
             <label for="p-odontologo">Odontologo <span class="requerido">*</span></label>
             <select id="p-odontologo" formControlName="odontologoId">
@@ -362,8 +368,12 @@
                 <option [value]="estado">{{ etiquetaEstado(estado) }}</option>
               }
             </select>
-            @if (formulario.controls.estado.touched && formulario.controls.estado.invalid) {
-              <span class="form-error">Elija el estado de la pieza.</span>
+            @if (formulario.controls.estado.touched) {
+              @if (formulario.controls.estado.hasError('required')) {
+                <span class="form-error">Elija el estado de la pieza.</span>
+              } @else if (formulario.controls.estado.hasError('estadoPieza')) {
+                <span class="form-error">El estado elegido no es válido.</span>
+              }
             }
           </div>
 
@@ -375,21 +385,45 @@
               formControlName="superficie"
               placeholder="Ej. Oclusal, mesial, distal"
             />
+            @if (
+              formulario.controls.superficie.touched &&
+              formulario.controls.superficie.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.superficie }} caracteres.</span>
+            }
           </div>
 
           <div class="form-campo">
             <label for="p-diagnostico">Diagnostico</label>
             <textarea id="p-diagnostico" formControlName="diagnostico"></textarea>
+            @if (
+              formulario.controls.diagnostico.touched &&
+              formulario.controls.diagnostico.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.diagnostico }} caracteres.</span>
+            }
           </div>
 
           <div class="form-campo">
             <label for="p-tratamiento">Tratamiento</label>
             <textarea id="p-tratamiento" formControlName="tratamiento"></textarea>
+            @if (
+              formulario.controls.tratamiento.touched &&
+              formulario.controls.tratamiento.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.tratamiento }} caracteres.</span>
+            }
           </div>
 
           <div class="form-campo">
             <label for="p-observaciones">Observaciones</label>
             <textarea id="p-observaciones" formControlName="observaciones"></textarea>
+            @if (
+              formulario.controls.observaciones.touched &&
+              formulario.controls.observaciones.hasError('maxlength')
+            ) {
+              <span class="form-error">Máximo {{ maximos.observaciones }} caracteres.</span>
+            }
           </div>
 
           <p class="form-ayuda">
